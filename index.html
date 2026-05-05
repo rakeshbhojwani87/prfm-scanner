@@ -409,4 +409,102 @@ function dismissBad() {
 // ── RECORD ──
 function recordBarcode(code) {
   const isNew = !tally[code];
-  if (tally[code]) { tally[code].qty += 1; tally[code].scan
+  if (tally[code]) { tally[code].qty += 1; tally[code].scans += 1; }
+  else { tally[code] = { qty: 1, scans: 1 }; }
+  totalConfirmed += 1;
+  updateStats();
+  updateTallyList(code, isNew);
+  toast('✓ Added: ' + code);
+}
+
+function updateStats() {
+  const barcodes = Object.keys(tally);
+  const units = barcodes.reduce((s, b) => s + tally[b].qty, 0);
+  document.getElementById('s-confirmed').textContent = totalConfirmed;
+  document.getElementById('s-skus').textContent      = barcodes.length;
+  document.getElementById('s-units').textContent     = units;
+}
+
+function updateTallyList(code, isNew) {
+  const list  = document.getElementById('tally-list');
+  const empty = list.querySelector('.tally-empty');
+  if (empty) empty.remove();
+  const id = 'bc_' + code;
+  if (isNew) {
+    const div = document.createElement('div');
+    div.className = 'tally-item'; div.id = id;
+    div.innerHTML = itemHTML(code);
+    list.insertBefore(div, list.firstChild);
+  } else {
+    const el = document.getElementById(id);
+    if (el) { el.innerHTML = itemHTML(code); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  }
+}
+
+function itemHTML(code) {
+  return `<div class="tally-barcode">${code}</div>
+    <div class="tally-scans">${tally[code].scans}×</div>
+    <div class="tally-qty">${tally[code].qty}</div>
+    <button class="del-btn" onclick="removeItem('${code}')">✕</button>`;
+}
+
+function removeItem(code) {
+  delete tally[code];
+  const el = document.getElementById('bc_' + code);
+  if (el) el.remove();
+  updateStats();
+  if (!Object.keys(tally).length)
+    document.getElementById('tally-list').innerHTML = '<div class="tally-empty"><span>▦</span>No barcodes confirmed yet.</div>';
+}
+
+function clearAll() {
+  if (!Object.keys(tally).length) return;
+  if (!confirm('Clear all confirmed barcodes?')) return;
+  Object.keys(tally).forEach(k => delete tally[k]);
+  totalConfirmed = 0;
+  document.getElementById('tally-list').innerHTML = '<div class="tally-empty"><span>▦</span>No barcodes confirmed yet.</div>';
+  document.getElementById('confirm-bar').classList.remove('show');
+  document.getElementById('bad-bar').classList.remove('show');
+  pendingCode = null;
+  updateStats();
+}
+
+// ── MANUAL ──
+document.getElementById('manual-input').addEventListener('keydown', e => { if (e.key === 'Enter') manualAdd(); });
+function manualAdd() {
+  const inp = document.getElementById('manual-input');
+  const code = inp.value.trim();
+  if (!code) return;
+  if (!isPRFM(code)) { toast('Must start with 8881400', true); return; }
+  recordBarcode(code);
+  inp.value = ''; inp.blur();
+}
+
+// ── EXPORT ──
+function openExport() {
+  const barcodes = Object.keys(tally);
+  if (!barcodes.length) { toast('Nothing to export yet', true); return; }
+  const now = new Date().toLocaleString();
+  let text = `PRFM INVENTORY SCAN\n${now}\n${'─'.repeat(36)}\nBARCODE            QTY  SCANS\n${'─'.repeat(36)}\n`;
+  barcodes.forEach(bc => { text += `${bc}   ${String(tally[bc].qty).padStart(3)}  ${tally[bc].scans}×\n`; });
+  const total = barcodes.reduce((s, b) => s + tally[b].qty, 0);
+  text += `${'─'.repeat(36)}\nSKUs: ${barcodes.length}   UNITS: ${total}\n`;
+  document.getElementById('export-text').value = text;
+  document.getElementById('export-modal').classList.add('open');
+}
+function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
+function copyExport() {
+  const ta = document.getElementById('export-text');
+  navigator.clipboard.writeText(ta.value).then(() => toast('Copied ✓')).catch(() => { ta.select(); document.execCommand('copy'); toast('Copied ✓'); });
+  closeExport();
+}
+
+// ── TOAST ──
+function toast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'show' + (isErr ? ' err' : '');
+  clearTimeout(t._t); t._t = setTimeout(() => t.className = '', 2800);
+}
+</script>
+</body>
+</html>
