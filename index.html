@@ -15,122 +15,81 @@
   html, body { height: 100%; background: var(--bg); color: var(--chalk); font-family: var(--sans); overscroll-behavior: none; }
   body { display: flex; flex-direction: column; height: 100dvh; }
 
-  /* TOP BAR */
   .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .topbar-brand { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; color: var(--teal); }
   .clear-btn { font-family: var(--mono); font-size: 10px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
 
-  /* CAMERA VIEWFINDER */
-  #cam-wrap {
-    position: relative; width: 100%; height: 220px;
-    background: #000; flex-shrink: 0; overflow: hidden;
-  }
+  /* CAMERA */
+  #cam-wrap { position: relative; width: 100%; height: 220px; background: #000; flex-shrink: 0; overflow: hidden; }
   #video { width: 100%; height: 100%; object-fit: cover; display: block; }
   #snap-canvas { display: none; }
-  #mask-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
 
   /* Frame corners */
-  .frame-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 3; }
-  .frame-box { width: 260px; height: 90px; position: relative; }
-  .frame-box::before, .frame-box::after, .frame-box .c1, .frame-box .c2 {
+  .frame-box {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;
+  }
+  .frame-inner { width: 260px; height: 100px; position: relative; }
+  .frame-inner::before, .frame-inner::after, .frame-inner .c1, .frame-inner .c2 {
     content: ''; position: absolute; width: 20px; height: 20px; border-color: var(--teal); border-style: solid;
   }
-  .frame-box::before { top:0; left:0; border-width: 2.5px 0 0 2.5px; }
-  .frame-box::after  { top:0; right:0; border-width: 2.5px 2.5px 0 0; }
-  .frame-box .c1     { bottom:0; right:0; border-width: 0 2.5px 2.5px 0; }
-  .frame-box .c2     { bottom:0; left:0; border-width: 0 0 2.5px 2.5px; }
-
-  /* Animated scan line — only shows when in READY state */
+  .frame-inner::before { top:0; left:0; border-width: 3px 0 0 3px; }
+  .frame-inner::after  { top:0; right:0; border-width: 3px 3px 0 0; }
+  .frame-inner .c1     { bottom:0; right:0; border-width: 0 3px 3px 0; }
+  .frame-inner .c2     { bottom:0; left:0; border-width: 0 0 3px 3px; }
   .scan-line {
-    position: absolute; left: 6px; right: 6px; height: 1.5px;
+    position: absolute; left: 4px; right: 4px; height: 2px;
     background: linear-gradient(90deg, transparent, var(--teal), transparent);
     animation: sweep 1.8s ease-in-out infinite;
   }
-  @keyframes sweep { 0%{top:8%;opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{top:92%;opacity:0} }
-  .scan-line.frozen { animation: none; opacity: 0; }
+  @keyframes sweep { 0%{top:5%;opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{top:95%;opacity:0} }
 
-  /* Camera idle */
+  /* Dark mask outside frame */
+  .mask-top    { position: absolute; top: 0; left: 0; right: 0; height: calc(50% - 50px); background: rgba(0,0,0,0.6); }
+  .mask-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: calc(50% - 50px); background: rgba(0,0,0,0.6); }
+  .mask-left   { position: absolute; top: calc(50% - 50px); bottom: calc(50% - 50px); left: 0; width: calc(50% - 130px); background: rgba(0,0,0,0.6); }
+  .mask-right  { position: absolute; top: calc(50% - 50px); bottom: calc(50% - 50px); right: 0; width: calc(50% - 130px); background: rgba(0,0,0,0.6); }
+
+  /* Cam idle */
   #cam-idle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #080808; z-index: 10; }
-  .cam-idle-icon { font-size: 36px; }
-  .cam-hint { font-size: 12px; color: var(--muted); text-align: center; padding: 0 24px; line-height: 1.5; }
-  .start-cam-btn { background: var(--teal); color: #0F0F0F; border: none; border-radius: 50px; padding: 12px 28px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; cursor: pointer; }
+  .cam-hint { font-size: 12px; color: var(--muted); text-align: center; }
+  .start-cam-btn { background: var(--teal); color: #0F0F0F; border: none; border-radius: 50px; padding: 14px 32px; font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.12em; cursor: pointer; }
 
-  /* Flash on capture */
-  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; transition: opacity 0.05s; }
-  #flash.on { opacity: 0.7; transition: opacity 0s; }
+  /* Loading state */
+  #cam-loading { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: #080808; z-index: 9; }
+  #cam-loading.show { display: flex; }
+  .loading-text { font-family: var(--mono); font-size: 12px; color: var(--teal); letter-spacing: 0.15em; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  /* ── SCAN BUTTON — big, impossible to miss ── */
-  #scan-btn-wrap {
-    padding: 14px 18px 10px;
-    flex-shrink: 0;
-    display: none; /* hidden until camera starts */
-  }
+  /* Flash */
+  #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 8; }
+  #flash.on { opacity: 0.5; transition: opacity 0s; }
+  #flash.off { opacity: 0; transition: opacity 0.15s; }
 
+  /* SCAN BUTTON */
+  #scan-btn-wrap { padding: 12px 16px 8px; flex-shrink: 0; display: none; }
   #scan-btn {
-    width: 100%;
-    background: var(--teal);
-    color: #0F0F0F;
-    border: none;
-    border-radius: 14px;
-    padding: 18px;
-    font-family: var(--mono);
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: opacity 0.15s, transform 0.1s;
+    width: 100%; background: var(--teal); color: #0F0F0F; border: none; border-radius: 14px;
+    padding: 18px; font-family: var(--mono); font-size: 15px; font-weight: 700;
+    letter-spacing: 0.14em; cursor: pointer; transition: opacity 0.15s;
   }
-
-  #scan-btn:active { transform: scale(0.97); opacity: 0.85; }
+  #scan-btn:active { opacity: 0.8; }
   #scan-btn:disabled { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
-  #scan-btn .btn-icon { font-size: 18px; }
 
-  /* ── RESULT BAR — shown after capture ── */
-  #result-bar {
-    background: #071A18;
-    border-top: 2px solid var(--teal);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 16px;
-    flex-shrink: 0;
-    display: none;
-  }
-  #result-bar.visible { display: block; animation: bar-drop 0.2s ease; }
-  @keyframes bar-drop { from { transform: translateY(-6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  /* CONFIRM BAR */
+  #confirm-bar { background: #071A18; border-bottom: 2px solid var(--teal); padding: 16px; flex-shrink: 0; display: none; }
+  #confirm-bar.show { display: block; animation: drop 0.2s ease; }
+  @keyframes drop { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  .confirm-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em; color: var(--teal); margin-bottom: 6px; text-transform: uppercase; }
+  .confirm-code  { font-family: var(--mono); font-size: 24px; font-weight: 700; color: var(--chalk); margin-bottom: 14px; word-break: break-all; }
+  .confirm-btns  { display: flex; gap: 10px; }
+  .btn-wrong { flex: 1; background: none; border: 1.5px solid var(--red); border-radius: 10px; color: var(--red); font-family: var(--mono); font-size: 13px; font-weight: 700; padding: 14px; cursor: pointer; }
+  .btn-add   { flex: 2; background: var(--teal); border: none; border-radius: 10px; color: #0F0F0F; font-family: var(--mono); font-size: 14px; font-weight: 700; padding: 14px; cursor: pointer; }
 
-  .result-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em; color: var(--teal); margin-bottom: 6px; text-transform: uppercase; }
-  .result-code  { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--chalk); letter-spacing: 0.04em; margin-bottom: 12px; word-break: break-all; }
-  .result-btns  { display: flex; gap: 10px; }
-
-  .btn-reject {
-    flex: 1; background: none; border: 1.5px solid var(--red);
-    border-radius: 10px; color: var(--red); font-family: var(--mono);
-    font-size: 12px; font-weight: 700; padding: 13px; cursor: pointer;
-  }
-  .btn-add {
-    flex: 2; background: var(--teal); border: none; border-radius: 10px;
-    color: #0F0F0F; font-family: var(--mono); font-size: 13px;
-    font-weight: 700; padding: 13px; cursor: pointer;
-  }
-  .btn-reject:active { background: rgba(230,57,70,0.1); }
-  .btn-add:active    { opacity: 0.8; }
-
-  /* ── NOT FOUND BAR ── */
-  #notfound-bar {
-    background: #1A0A0B;
-    border-top: 2px solid var(--red);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 16px;
-    flex-shrink: 0;
-    display: none;
-    text-align: center;
-  }
-  #notfound-bar.visible { display: block; animation: bar-drop 0.2s ease; }
-  .notfound-text { font-size: 13px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
-  .btn-retry { background: none; border: 1.5px solid var(--teal); border-radius: 10px; color: var(--teal); font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 12px 28px; cursor: pointer; }
+  /* BAD BAR */
+  #bad-bar { background: #1A0A0B; border-bottom: 2px solid var(--red); padding: 14px 16px; flex-shrink: 0; display: none; text-align: center; }
+  #bad-bar.show { display: block; }
+  .bad-text { font-size: 13px; color: var(--muted); margin-bottom: 10px; line-height: 1.5; }
+  .btn-ok { background: none; border: 1.5px solid var(--teal); border-radius: 8px; color: var(--teal); font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 10px 24px; cursor: pointer; }
 
   /* STATS */
   .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px 14px; flex-shrink: 0; }
@@ -145,14 +104,13 @@
 
   .tally-list { flex: 1; overflow-y: auto; padding: 4px 14px 10px; -webkit-overflow-scrolling: touch; }
   .tally-list::-webkit-scrollbar { display: none; }
-  .tally-empty { text-align: center; padding: 24px 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
+  .tally-empty { text-align: center; padding: 28px 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
   .tally-empty span { font-size: 26px; display: block; margin-bottom: 8px; }
 
   .tally-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px; animation: item-in 0.2s ease; }
   @keyframes item-in { from { transform: translateX(10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   .tally-item.bump { animation: bump 0.3s ease; }
   @keyframes bump { 0% { background: rgba(0,201,177,0.15); } 100% { background: var(--surface); } }
-
   .tally-barcode { font-family: var(--mono); font-size: 13px; color: var(--chalk); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tally-scans { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(255,255,255,0.04); border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
   .tally-qty { font-family: var(--mono); font-size: 20px; font-weight: 700; color: var(--teal); min-width: 32px; text-align: right; flex-shrink: 0; }
@@ -166,7 +124,7 @@
   .manual-input::placeholder { color: #333; font-size: 12px; }
   .add-btn { background: var(--surface); color: var(--teal); border: 1px solid var(--teal); border-radius: 10px; padding: 11px 16px; font-family: var(--mono); font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
 
-  /* EXPORT MODAL */
+  /* EXPORT */
   .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-bg.open { display: flex; }
   .modal-sheet { background: #1A1A1A; border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 28px 24px 40px; width: 100%; animation: sheet-up 0.3s cubic-bezier(0.4,0,0.2,1); }
@@ -190,46 +148,45 @@
   <button class="clear-btn" onclick="clearAll()">CLEAR ALL</button>
 </div>
 
-<!-- CAMERA VIEWFINDER — always live, never auto-scans -->
 <div id="cam-wrap">
   <div id="cam-idle">
-    <div class="cam-idle-icon">📷</div>
-    <div class="cam-hint">Aim camera at barcode, then tap the button below to capture</div>
+    <div class="cam-hint">Aim at ONE barcode, then tap Scan</div>
     <button class="start-cam-btn" onclick="startCamera()">START CAMERA</button>
   </div>
+  <div id="cam-loading"><div class="loading-text">STARTING CAMERA…</div></div>
   <video id="video" playsinline autoplay muted></video>
   <canvas id="snap-canvas"></canvas>
-  <canvas id="mask-canvas"></canvas>
-  <div class="frame-overlay" id="frame-overlay" style="display:none">
-    <div class="frame-box">
+  <!-- Mask -->
+  <div class="mask-top"></div>
+  <div class="mask-bottom"></div>
+  <div class="mask-left"></div>
+  <div class="mask-right"></div>
+  <!-- Frame -->
+  <div class="frame-box">
+    <div class="frame-inner">
       <div class="c1"></div><div class="c2"></div>
-      <div class="scan-line" id="scan-line"></div>
+      <div class="scan-line"></div>
     </div>
   </div>
   <div id="flash"></div>
 </div>
 
-<!-- BIG SCAN BUTTON -->
 <div id="scan-btn-wrap">
-  <button id="scan-btn" onclick="captureAndRead()">
-    <span class="btn-icon">▦</span> TAP TO SCAN
-  </button>
+  <button id="scan-btn" onclick="captureAndDecode()">▦ &nbsp; TAP TO SCAN</button>
 </div>
 
-<!-- RESULT: valid PRFM barcode found -->
-<div id="result-bar">
-  <div class="result-label">▦ Barcode detected — confirm to add</div>
-  <div class="result-code" id="result-code">—</div>
-  <div class="result-btns">
-    <button class="btn-reject" onclick="dismissResult()">✕ WRONG</button>
-    <button class="btn-add"    onclick="addResult()">✓ ADD TO TALLY</button>
+<div id="confirm-bar">
+  <div class="confirm-label">▦ Barcode detected — confirm to add</div>
+  <div class="confirm-code" id="confirm-code">—</div>
+  <div class="confirm-btns">
+    <button class="btn-wrong" onclick="rejectScan()">✕ WRONG</button>
+    <button class="btn-add"   onclick="confirmScan()">✓ ADD TO TALLY</button>
   </div>
 </div>
 
-<!-- RESULT: nothing found or non-PRFM -->
-<div id="notfound-bar">
-  <div class="notfound-text" id="notfound-text">No barcode found.<br>Hold the barcode closer and try again.</div>
-  <button class="btn-retry" onclick="dismissNotFound()">TRY AGAIN</button>
+<div id="bad-bar">
+  <div class="bad-text" id="bad-text">Not a PRFM barcode. Try again.</div>
+  <button class="btn-ok" onclick="dismissBad()">TRY AGAIN</button>
 </div>
 
 <div class="stats-row">
@@ -266,164 +223,190 @@
 
 <div id="toast"></div>
 
-<!-- ZXing for barcode decoding from canvas snapshot -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing/0.19.1/zxing.min.js" crossorigin="anonymous"></script>
-
+<!-- BarcodeDetector API + fallback via dynamically loaded ZXing -->
 <script>
-// ─────────────────────────────────────
-//  PRFM barcode filter
-//  Only accept codes starting with 8881400
-// ─────────────────────────────────────
+// ── PRFM filter ──
 function isPRFM(code) {
   return typeof code === 'string' && code.startsWith('8881400');
 }
 
-// ─────────────────────────────────────
-//  STATE
-// ─────────────────────────────────────
+// ── STATE ──
 const tally = {};
 let totalConfirmed = 0;
 let pendingCode = null;
 let stream = null;
-let codeReader = null;
+let detector = null;
+let scanBusy = false;
 
-// ─────────────────────────────────────
-//  CAMERA — just preview, no auto scanning
-// ─────────────────────────────────────
+// ── START CAMERA (just preview) ──
 async function startCamera() {
+  document.getElementById('cam-idle').style.display = 'none';
+  document.getElementById('cam-loading').classList.add('show');
+
   try {
     stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
     });
     const video = document.getElementById('video');
     video.srcObject = stream;
     await video.play();
 
-    document.getElementById('cam-idle').style.display = 'none';
-    document.getElementById('frame-overlay').style.display = 'flex';
-    document.getElementById('scan-btn-wrap').style.display = 'block';
-
-    // Init ZXing reader (used only on demand)
-    if (typeof ZXing !== 'undefined') {
-      const hints = new Map();
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXing.BarcodeFormat.EAN_13,
-        ZXing.BarcodeFormat.EAN_8,
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.UPC_A,
-      ]);
-      codeReader = new ZXing.BrowserMultiFormatReader(hints);
+    // Init BarcodeDetector if available (Chrome Android)
+    if ('BarcodeDetector' in window) {
+      detector = new BarcodeDetector({
+        formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e']
+      });
     }
 
-    drawMask();
+    document.getElementById('cam-loading').classList.remove('show');
+    document.getElementById('scan-btn-wrap').style.display = 'block';
+
   } catch(e) {
-    toast('Camera error: ' + e.message, true);
+    document.getElementById('cam-loading').classList.remove('show');
+    document.getElementById('cam-idle').style.display = 'flex';
+    document.getElementById('cam-idle').innerHTML =
+      '<div style="color:#E63946;font-family:monospace;font-size:12px;text-align:center;padding:0 20px">Camera error:<br>' + e.message + '</div>';
+    toast('Camera failed — use manual input below', true);
   }
 }
 
-// ─────────────────────────────────────
-//  CAPTURE — user taps button, ONE snapshot taken
-// ─────────────────────────────────────
-async function captureAndRead() {
-  const video  = document.getElementById('video');
-  const canvas = document.getElementById('snap-canvas');
-  const btn    = document.getElementById('scan-btn');
+// ── TAP TO SCAN — snapshot + decode ──
+async function captureAndDecode() {
+  if (scanBusy) return;
+  scanBusy = true;
 
-  if (!stream || video.readyState < 2) { toast('Camera not ready', true); return; }
-
-  // Disable button while processing
+  const btn   = document.getElementById('scan-btn');
+  const video = document.getElementById('video');
   btn.disabled = true;
   btn.textContent = 'READING…';
 
-  // Flash effect
+  // Flash
   const fl = document.getElementById('flash');
   fl.classList.add('on');
   setTimeout(() => fl.classList.remove('on'), 120);
 
-  // Freeze scan line
-  document.getElementById('scan-line').classList.add('frozen');
+  // Snap frame to canvas
+  const canvas = document.getElementById('snap-canvas');
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 720;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // Snap current video frame to canvas
-  canvas.width  = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-
-  // Crop to centre zone only — this is the key change
-  // Only read the centre 60% width, 50% height of the frame
-  const cropCanvas = document.createElement('canvas');
-  const cw = Math.round(canvas.width  * 0.7);
-  const ch = Math.round(canvas.height * 0.5);
-  const cx = Math.round((canvas.width  - cw) / 2);
-  const cy = Math.round((canvas.height - ch) / 2);
-  cropCanvas.width  = cw;
-  cropCanvas.height = ch;
-  cropCanvas.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+  // Crop centre zone only (where the frame box is)
+  const cropW = Math.round(canvas.width  * 0.65);
+  const cropH = Math.round(canvas.height * 0.55);
+  const cropX = Math.round((canvas.width  - cropW) / 2);
+  const cropY = Math.round((canvas.height - cropH) / 2);
+  const crop  = document.createElement('canvas');
+  crop.width  = cropW;
+  crop.height = cropH;
+  crop.getContext('2d').drawImage(canvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
   let found = null;
 
   try {
-    if (codeReader) {
-      // Decode from cropped snapshot
-      const result = await codeReader.decodeFromCanvas(cropCanvas);
-      if (result) found = result.getText();
-    } else if ('BarcodeDetector' in window) {
-      const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','upc_a'] });
-      const codes = await detector.detect(cropCanvas);
-      if (codes.length > 0) found = codes[0].rawValue;
+    if (detector) {
+      // Native BarcodeDetector (Chrome Android — best results)
+      const results = await detector.detect(crop);
+      if (results.length > 0) found = results[0].rawValue;
+    } else {
+      // Fallback: ZXing loaded dynamically
+      found = await decodeWithZXing(crop);
     }
   } catch(e) {
-    // ZXing throws when nothing found — that's normal
     found = null;
   }
 
-  // ── RESULT HANDLING ──
-  if (found && isPRFM(found)) {
-    // Valid PRFM barcode — show confirm
-    pendingCode = found;
-    document.getElementById('result-code').textContent = found;
-    document.getElementById('result-bar').classList.add('visible');
-    document.getElementById('notfound-bar').classList.remove('visible');
-    if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
-  } else if (found && !isPRFM(found)) {
-    // Something detected but not a PRFM barcode
-    document.getElementById('notfound-text').textContent =
-      'Wrong barcode detected (' + found + ').\nAim at a PRFM barcode and try again.';
-    document.getElementById('notfound-bar').classList.add('visible');
-    document.getElementById('result-bar').classList.remove('visible');
-    if (navigator.vibrate) navigator.vibrate(200);
-  } else {
-    // Nothing found
-    document.getElementById('notfound-text').textContent =
-      'No barcode found.\nHold the barcode steady inside the frame and try again.';
-    document.getElementById('notfound-bar').classList.add('visible');
-    document.getElementById('result-bar').classList.remove('visible');
-    if (navigator.vibrate) navigator.vibrate(200);
-  }
-
-  // Re-enable button
   btn.disabled = false;
-  btn.innerHTML = '<span class="btn-icon">▦</span> TAP TO SCAN';
-  document.getElementById('scan-line').classList.remove('frozen');
+  btn.textContent = '▦  TAP TO SCAN';
+
+  handleResult(found);
+  scanBusy = false;
 }
 
-// ─────────────────────────────────────
-//  CONFIRM / DISMISS
-// ─────────────────────────────────────
-function addResult() {
+// ── ZXing dynamic fallback ──
+function decodeWithZXing(canvas) {
+  return new Promise((resolve) => {
+    // Load ZXing only once
+    if (window._zxingLoaded) {
+      tryZXing(canvas, resolve);
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing/0.19.1/zxing.min.js';
+    s.onload = () => { window._zxingLoaded = true; tryZXing(canvas, resolve); };
+    s.onerror = () => resolve(null);
+    document.head.appendChild(s);
+  });
+}
+
+function tryZXing(canvas, resolve) {
+  try {
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.CODE_128,
+      ZXing.BarcodeFormat.UPC_A,
+    ]);
+    const reader = new ZXing.BrowserMultiFormatReader(hints);
+    reader.decodeFromCanvas(canvas)
+      .then(r => resolve(r ? r.getText() : null))
+      .catch(() => resolve(null));
+  } catch(e) {
+    resolve(null);
+  }
+}
+
+// ── HANDLE RESULT ──
+function handleResult(code) {
+  document.getElementById('confirm-bar').classList.remove('show');
+  document.getElementById('bad-bar').classList.remove('show');
+
+  if (!code) {
+    // Nothing found
+    document.getElementById('bad-text').textContent =
+      'No barcode found. Hold the label steady inside the frame and tap again.';
+    document.getElementById('bad-bar').classList.add('show');
+    if (navigator.vibrate) navigator.vibrate(200);
+    return;
+  }
+
+  if (!isPRFM(code)) {
+    // Found something but not PRFM
+    document.getElementById('bad-text').textContent =
+      'Wrong barcode read: ' + code + '\nAim at a PRFM label (starts with 8881400).';
+    document.getElementById('bad-bar').classList.add('show');
+    if (navigator.vibrate) navigator.vibrate(200);
+    return;
+  }
+
+  // Valid PRFM code
+  pendingCode = code;
+  document.getElementById('confirm-code').textContent = code;
+  document.getElementById('confirm-bar').classList.add('show');
+  if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
+}
+
+// ── CONFIRM / REJECT ──
+function confirmScan() {
   if (!pendingCode) return;
   recordBarcode(pendingCode);
   pendingCode = null;
-  document.getElementById('result-bar').classList.remove('visible');
+  document.getElementById('confirm-bar').classList.remove('show');
 }
 
-function dismissResult() {
+function rejectScan() {
   pendingCode = null;
-  document.getElementById('result-bar').classList.remove('visible');
+  document.getElementById('confirm-bar').classList.remove('show');
   toast('Rejected — try again', true);
 }
 
-function dismissNotFound() {
-  document.getElementById('notfound-bar').classList.remove('visible');
+function dismissBad() {
+  document.getElementById('bad-bar').classList.remove('show');
 }
 
-// ───────────────────────────────
+// ── RECORD ──
+function recordBarcode(code) {
+  const isNew = !tally[code];
+  if (tally[code]) { tally[code].qty += 1; tally[code].scan
