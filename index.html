@@ -6,200 +6,113 @@
 <title>PRFM · Scanner</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap');
-
   :root {
-    --bg: #0F0F0F;
-    --surface: #1A1A1A;
-    --border: #2A2A2A;
-    --teal: #00C9B1;
-    --red: #E63946;
-    --chalk: #F0F0EE;
-    --muted: #555;
-    --mono: 'Space Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
+    --bg: #0F0F0F; --surface: #1A1A1A; --border: #2A2A2A;
+    --teal: #00C9B1; --red: #E63946; --chalk: #F0F0EE;
+    --muted: #555; --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; background: var(--bg); color: var(--chalk); font-family: var(--sans); overscroll-behavior: none; }
   body { display: flex; flex-direction: column; height: 100dvh; }
 
   /* TOP BAR */
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .topbar-brand { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; color: var(--teal); }
-  .clear-btn {
-    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--muted);
-    background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer;
-  }
+  .clear-btn { font-family: var(--mono); font-size: 10px; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
 
   /* CAMERA */
-  #cam-wrap {
-    position: relative; width: 100%; height: 240px;
-    background: #000; flex-shrink: 0; overflow: hidden;
-  }
-
+  #cam-wrap { position: relative; width: 100%; height: 220px; background: #000; flex-shrink: 0; overflow: hidden; }
   #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #mask-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 
-  /* Dark mask with centre cutout */
-  .scan-mask {
-    position: absolute; inset: 0; pointer-events: none;
-    /* Four dark rectangles around the centre window */
-  }
-
-  /* We draw the mask using a canvas overlay */
-  #mask-canvas {
-    position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
-  }
-
-  /* Corner frame around the target zone */
-  .frame-overlay {
-    position: absolute; inset: 0; display: flex;
-    align-items: center; justify-content: center; pointer-events: none;
-  }
-
-  .frame-box {
-    width: 220px; height: 80px; position: relative;
-  }
-
+  /* Frame corners */
+  .frame-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .frame-box { width: 260px; height: 90px; position: relative; }
   .frame-box::before, .frame-box::after, .frame-box .c1, .frame-box .c2 {
-    content: ''; position: absolute; width: 18px; height: 18px;
-    border-color: var(--teal); border-style: solid;
+    content: ''; position: absolute; width: 20px; height: 20px; border-color: var(--teal); border-style: solid;
   }
-  .frame-box::before { top:0; left:0;  border-width: 2.5px 0 0 2.5px; }
+  .frame-box::before { top:0; left:0; border-width: 2.5px 0 0 2.5px; }
   .frame-box::after  { top:0; right:0; border-width: 2.5px 2.5px 0 0; }
   .frame-box .c1     { bottom:0; right:0; border-width: 0 2.5px 2.5px 0; }
-  .frame-box .c2     { bottom:0; left:0;  border-width: 0 0 2.5px 2.5px; }
-
+  .frame-box .c2     { bottom:0; left:0; border-width: 0 0 2.5px 2.5px; }
   .scan-line {
     position: absolute; left: 6px; right: 6px; height: 1.5px;
     background: linear-gradient(90deg, transparent, var(--teal), transparent);
     animation: sweep 1.8s ease-in-out infinite;
   }
+  @keyframes sweep { 0% { top:8%; opacity:0; } 15% { opacity:1; } 85% { opacity:1; } 100% { top:92%; opacity:0; } }
 
-  @keyframes sweep {
-    0%   { top: 8%;  opacity: 0; }
-    15%  { opacity: 1; }
-    85%  { opacity: 1; }
-    100% { top: 92%; opacity: 0; }
-  }
+  /* Scan line frozen when paused */
+  .frame-box.paused .scan-line { animation: none; opacity: 0.2; top: 50%; }
 
   /* Cam idle */
-  #cam-idle {
-    position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 12px; background: #080808;
-  }
+  #cam-idle { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #080808; z-index: 5; }
   .cam-idle-icon { font-size: 36px; }
-  .start-cam-btn {
-    background: var(--teal); color: #0F0F0F; border: none; border-radius: 50px;
-    padding: 12px 28px; font-family: var(--mono); font-size: 12px;
-    font-weight: 700; letter-spacing: 0.12em; cursor: pointer;
+  .start-cam-btn { background: var(--teal); color: #0F0F0F; border: none; border-radius: 50px; padding: 12px 28px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.12em; cursor: pointer; }
+  .cam-hint { font-size: 12px; color: var(--muted); text-align: center; padding: 0 20px; }
+
+  /* Paused overlay on camera */
+  #cam-paused-overlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 4; pointer-events: none;
   }
-  .cam-hint { font-size: 12px; color: var(--muted); }
+  #cam-paused-overlay.show { display: flex; }
+  .paused-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.2em; color: rgba(255,255,255,0.4); }
 
   /* Flash */
-  #flash-overlay {
-    position: absolute; inset: 0; background: var(--teal);
-    opacity: 0; pointer-events: none; transition: opacity 0.05s;
-  }
-  #flash-overlay.flash { opacity: 0.3; transition: opacity 0s; }
+  #flash-overlay { position: absolute; inset: 0; background: var(--teal); opacity: 0; pointer-events: none; z-index: 3; transition: opacity 0.05s; }
+  #flash-overlay.flash { opacity: 0.35; transition: opacity 0s; }
 
   /* ── CONFIRM BAR ── */
   #confirm-bar {
-    background: #0A1F1D;
-    border-top: 2px solid var(--teal);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 16px;
+    background: #071A18;
+    border-bottom: 2px solid var(--teal);
+    padding: 16px 16px 14px;
     flex-shrink: 0;
     display: none;
-    animation: slide-down 0.2s ease;
   }
+  #confirm-bar.visible { display: block; animation: bar-drop 0.22s ease; }
+  @keyframes bar-drop { from { transform: translateY(-8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-  @keyframes slide-down {
-    from { transform: translateY(-10px); opacity: 0; }
-    to   { transform: translateY(0);     opacity: 1; }
-  }
-
-  #confirm-bar.visible { display: block; }
-
-  .confirm-label {
-    font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em;
-    color: var(--teal); text-transform: uppercase; margin-bottom: 8px;
-  }
-
-  .confirm-code {
-    font-family: var(--mono); font-size: 20px; font-weight: 700;
-    color: var(--chalk); letter-spacing: 0.06em; margin-bottom: 12px;
-    word-break: break-all;
-  }
+  .confirm-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.22em; color: var(--teal); margin-bottom: 6px; text-transform: uppercase; }
+  .confirm-code  { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--chalk); letter-spacing: 0.04em; margin-bottom: 12px; word-break: break-all; }
 
   .confirm-btns { display: flex; gap: 10px; }
-
   .btn-reject {
     flex: 1; background: none; border: 1.5px solid var(--red);
     border-radius: 10px; color: var(--red); font-family: var(--mono);
-    font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
-    padding: 13px; cursor: pointer;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.1em; padding: 13px; cursor: pointer;
   }
-
   .btn-confirm {
     flex: 2; background: var(--teal); border: none; border-radius: 10px;
     color: #0F0F0F; font-family: var(--mono); font-size: 13px;
     font-weight: 700; letter-spacing: 0.12em; padding: 13px; cursor: pointer;
   }
-
-  .btn-reject:active  { background: rgba(230,57,70,0.1); }
+  .btn-reject:active  { background: rgba(230,57,70,0.12); }
   .btn-confirm:active { opacity: 0.8; }
 
   /* STATS */
-  .stats-row {
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px; padding: 10px 14px; flex-shrink: 0;
-  }
-  .stat-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 10px 8px; text-align: center;
-  }
+  .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px 14px; flex-shrink: 0; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 8px; text-align: center; }
   .stat-val { font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--teal); line-height: 1; }
   .stat-lbl { font-family: var(--mono); font-size: 8px; letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; margin-top: 4px; }
 
-  /* TALLY HEADER */
-  .tally-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 6px 18px 4px; flex-shrink: 0;
-  }
+  /* TALLY */
+  .tally-header { display: flex; align-items: center; justify-content: space-between; padding: 6px 18px 4px; flex-shrink: 0; }
   .tally-title { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--muted); text-transform: uppercase; }
-  .export-btn {
-    font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
-    color: var(--teal); background: none; border: 1px solid rgba(0,201,177,0.3);
-    border-radius: 5px; padding: 4px 8px; cursor: pointer;
-  }
+  .export-btn { font-family: var(--mono); font-size: 9px; color: var(--teal); background: none; border: 1px solid rgba(0,201,177,0.3); border-radius: 5px; padding: 4px 8px; cursor: pointer; }
 
-  /* TALLY LIST */
   .tally-list { flex: 1; overflow-y: auto; padding: 4px 14px 10px; -webkit-overflow-scrolling: touch; }
   .tally-list::-webkit-scrollbar { display: none; }
 
-  .tally-empty {
-    text-align: center; padding: 28px 0; color: var(--muted);
-    font-size: 13px; line-height: 1.8;
-  }
+  .tally-empty { text-align: center; padding: 28px 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
   .tally-empty span { font-size: 26px; display: block; margin-bottom: 8px; }
 
-  .tally-item {
-    display: flex; align-items: center; gap: 12px; padding: 12px 14px;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; margin-bottom: 6px; animation: item-in 0.2s ease;
-  }
-  @keyframes item-in {
-    from { transform: translateX(10px); opacity: 0; }
-    to   { transform: translateX(0);    opacity: 1; }
-  }
+  .tally-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px; animation: item-in 0.2s ease; }
+  @keyframes item-in { from { transform: translateX(10px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   .tally-item.bump { animation: bump 0.3s ease; }
-  @keyframes bump {
-    0%   { background: rgba(0,201,177,0.15); }
-    100% { background: var(--surface); }
-  }
+  @keyframes bump { 0% { background: rgba(0,201,177,0.15); } 100% { background: var(--surface); } }
 
   .tally-barcode { font-family: var(--mono); font-size: 13px; color: var(--chalk); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tally-scans { font-family: var(--mono); font-size: 10px; color: var(--muted); background: rgba(255,255,255,0.04); border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
@@ -208,128 +121,86 @@
   .del-btn:active { color: var(--red); }
 
   /* MANUAL */
-  .manual-bar {
-    display: flex; gap: 8px; padding: 10px 14px 20px;
-    flex-shrink: 0; border-top: 1px solid var(--border);
-  }
-  .manual-input {
-    flex: 1; background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; color: var(--chalk); font-family: var(--mono);
-    font-size: 13px; padding: 12px 14px; outline: none; -webkit-appearance: none;
-  }
+  .manual-bar { display: flex; gap: 8px; padding: 10px 14px 20px; flex-shrink: 0; border-top: 1px solid var(--border); }
+  .manual-input { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; color: var(--chalk); font-family: var(--mono); font-size: 13px; padding: 12px 14px; outline: none; -webkit-appearance: none; }
   .manual-input:focus { border-color: var(--teal); }
   .manual-input::placeholder { color: #333; font-size: 12px; }
-  .add-btn {
-    background: var(--teal); color: #0F0F0F; border: none; border-radius: 10px;
-    padding: 12px 18px; font-family: var(--mono); font-size: 12px;
-    font-weight: 700; letter-spacing: 0.08em; cursor: pointer; flex-shrink: 0;
-  }
+  .add-btn { background: var(--teal); color: #0F0F0F; border: none; border-radius: 10px; padding: 12px 18px; font-family: var(--mono); font-size: 12px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
 
   /* EXPORT MODAL */
-  .modal-bg {
-    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-    z-index: 100; align-items: flex-end; justify-content: center;
-  }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; align-items: flex-end; justify-content: center; }
   .modal-bg.open { display: flex; }
-  .modal-sheet {
-    background: #1A1A1A; border: 1px solid var(--border); border-radius: 20px 20px 0 0;
-    padding: 28px 24px 40px; width: 100%; max-width: 480px;
-    animation: sheet-up 0.3s cubic-bezier(0.4,0,0.2,1);
-  }
+  .modal-sheet { background: #1A1A1A; border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 28px 24px 40px; width: 100%; animation: sheet-up 0.3s cubic-bezier(0.4,0,0.2,1); }
   @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .modal-title { font-family: var(--mono); font-size: 12px; letter-spacing: 0.18em; color: var(--teal); margin-bottom: 16px; }
-  .export-textarea {
-    width: 100%; background: #0F0F0F; border: 1px solid var(--border);
-    border-radius: 10px; color: var(--chalk); font-family: var(--mono);
-    font-size: 12px; padding: 14px; height: 200px; resize: none; outline: none; line-height: 1.7;
-  }
+  .export-textarea { width: 100%; background: #0F0F0F; border: 1px solid var(--border); border-radius: 10px; color: var(--chalk); font-family: var(--mono); font-size: 12px; padding: 14px; height: 200px; resize: none; outline: none; line-height: 1.7; }
   .modal-actions { display: flex; gap: 10px; margin-top: 14px; }
-  .modal-close {
-    background: none; border: 1px solid var(--border); border-radius: 10px;
-    color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 13px 18px; cursor: pointer;
-  }
-  .modal-copy {
-    flex: 1; background: var(--teal); border: none; border-radius: 10px;
-    color: #0F0F0F; font-family: var(--mono); font-size: 12px;
-    font-weight: 700; padding: 13px; cursor: pointer;
-  }
+  .modal-close { background: none; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: var(--mono); font-size: 12px; padding: 13px 18px; cursor: pointer; }
+  .modal-copy { flex: 1; background: var(--teal); border: none; border-radius: 10px; color: #0F0F0F; font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 13px; cursor: pointer; }
 
   /* TOAST */
-  #toast {
-    position: fixed; bottom: 80px; left: 50%;
-    transform: translateX(-50%) translateY(50px);
-    background: var(--surface); border: 1px solid var(--teal);
-    border-radius: 8px; padding: 10px 18px; font-family: var(--mono);
-    font-size: 11px; color: var(--teal); z-index: 200;
-    transition: transform 0.25s ease; white-space: nowrap; letter-spacing: 0.08em;
-  }
+  #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(50px); background: var(--surface); border: 1px solid var(--teal); border-radius: 8px; padding: 10px 18px; font-family: var(--mono); font-size: 11px; color: var(--teal); z-index: 200; transition: transform 0.25s ease; white-space: nowrap; }
   #toast.show { transform: translateX(-50%) translateY(0); }
   #toast.err  { border-color: var(--red); color: var(--red); }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
 <div class="topbar">
   <div class="topbar-brand">PRFM · SCANNER</div>
   <button class="clear-btn" onclick="clearAll()">CLEAR ALL</button>
 </div>
 
-<!-- CAMERA -->
 <div id="cam-wrap">
   <div id="cam-idle">
     <div class="cam-idle-icon">📷</div>
-    <div class="cam-hint">Aim at ONE barcode inside the box</div>
+    <div class="cam-hint">Hold ONE barcode inside the box and tap Start</div>
     <button class="start-cam-btn" onclick="startCamera()">START SCANNING</button>
   </div>
   <video id="video" playsinline autoplay muted></video>
   <canvas id="mask-canvas"></canvas>
   <div class="frame-overlay" id="frame-overlay" style="display:none">
-    <div class="frame-box">
+    <div class="frame-box" id="frame-box">
       <div class="c1"></div><div class="c2"></div>
       <div class="scan-line"></div>
     </div>
   </div>
+  <div id="cam-paused-overlay">
+    <div class="paused-label">PAUSED · CONFIRM BELOW</div>
+  </div>
   <div id="flash-overlay"></div>
 </div>
 
-<!-- CONFIRM BAR -->
+<!-- CONFIRM BAR — blocks everything until tapped -->
 <div id="confirm-bar">
-  <div class="confirm-label">⚠ Barcode detected — confirm to add</div>
+  <div class="confirm-label">▦ Barcode detected — is this correct?</div>
   <div class="confirm-code" id="confirm-code">—</div>
   <div class="confirm-btns">
-    <button class="btn-reject" onclick="rejectScan()">✕ WRONG</button>
+    <button class="btn-reject"  onclick="rejectScan()">✕ WRONG</button>
     <button class="btn-confirm" onclick="confirmScan()">✓ ADD TO TALLY</button>
   </div>
 </div>
 
-<!-- STATS -->
 <div class="stats-row">
-  <div class="stat-card"><div class="stat-val" id="s-scans">0</div><div class="stat-lbl">Confirmed</div></div>
+  <div class="stat-card"><div class="stat-val" id="s-confirmed">0</div><div class="stat-lbl">Confirmed</div></div>
   <div class="stat-card"><div class="stat-val" id="s-skus">0</div><div class="stat-lbl">SKUs</div></div>
   <div class="stat-card"><div class="stat-val" id="s-units">0</div><div class="stat-lbl">Units</div></div>
 </div>
 
-<!-- TALLY HEADER -->
 <div class="tally-header">
   <div class="tally-title">Confirmed Tally</div>
   <button class="export-btn" onclick="openExport()">EXPORT ↗</button>
 </div>
 
-<!-- TALLY LIST -->
 <div class="tally-list" id="tally-list">
   <div class="tally-empty"><span>▦</span>No barcodes confirmed yet.</div>
 </div>
 
-<!-- MANUAL INPUT -->
 <div class="manual-bar">
-  <input class="manual-input" id="manual-input" type="text"
-    inputmode="numeric" placeholder="Type barcode manually…"
-    autocomplete="off" autocapitalize="none" />
+  <input class="manual-input" id="manual-input" type="text" inputmode="numeric" placeholder="Type barcode manually…" autocomplete="off" autocapitalize="none" />
   <button class="add-btn" onclick="manualAdd()">ADD</button>
 </div>
 
-<!-- EXPORT MODAL -->
 <div class="modal-bg" id="export-modal">
   <div class="modal-sheet">
     <div class="modal-title">EXPORT · BARCODE TALLY</div>
@@ -346,192 +217,156 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/zxing/0.19.1/zxing.min.js" crossorigin="anonymous"></script>
 
 <script>
-// ── STATE ──
+// ─────────────────────────────────────────
+//  PRFM BARCODE VALIDATION
+//  Your barcodes all start with 8881400
+//  Anything else is instantly discarded — no confirm shown
+// ─────────────────────────────────────────
+function isPRFMBarcode(code) {
+  return /^8881400/.test(code);
+}
+
+// ─────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────
 const tally = {};
 let totalConfirmed = 0;
-let pendingCode = null;   // code waiting for user confirmation
-let paused = false;       // pause scanning while confirm bar is showing
-let lastCode = '';
-let lastTime = 0;
+let pendingCode    = null;
+let isWaitingConfirm = false;  // TRUE = scanner is FULLY paused, nothing processed
+let codeReader     = null;
 
-// ── CAMERA ──
-async function startCamera() {
+// ─────────────────────────────────────────
+//  CAMERA START
+// ─────────────────────────────────────────
+function startCamera() {
   document.getElementById('cam-idle').style.display = 'none';
   document.getElementById('frame-overlay').style.display = 'flex';
   drawMask();
 
   const video = document.getElementById('video');
 
-  try {
-    if (typeof ZXing !== 'undefined') {
-      const hints = new Map();
-      // Only EAN-13 and Code128 — the formats on your PRFM labels
-      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-        ZXing.BarcodeFormat.EAN_13,
-        ZXing.BarcodeFormat.EAN_8,
-        ZXing.BarcodeFormat.CODE_128,
-        ZXing.BarcodeFormat.UPC_A
-      ]);
-      hints.set(ZXing.DecodeHintType.TRY_HARDER, false); // don't hunt outside centre
-
-      const codeReader = new ZXing.BrowserMultiFormatReader(hints);
-      codeReader.decodeFromConstraints(
-        { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 480 } } },
-        video,
-        (result, err) => {
-          if (result && !paused) onDetected(result.getText(), video);
-        }
-      );
-    } else {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 480 } }
-      });
-      video.srcObject = stream;
-      video.play();
-      startNativeDetector(video);
-    }
-  } catch(e) {
-    console.error(e);
-    document.getElementById('cam-idle').style.display = 'flex';
-    document.getElementById('frame-overlay').style.display = 'none';
-    toast('Camera error — use manual input below', true);
-  }
-}
-
-// Draw dark mask over everything outside the centre scan zone
-function drawMask() {
-  const canvas = document.getElementById('mask-canvas');
-  const wrap   = document.getElementById('cam-wrap');
-  const W = wrap.offsetWidth;
-  const H = wrap.offsetHeight;
-  canvas.width  = W;
-  canvas.height = H;
-
-  const ctx = canvas.getContext('2d');
-
-  // Zone dimensions — match the CSS frame-box (220px wide, 80px tall)
-  const zoneW = 220;
-  const zoneH = 80;
-  const zoneX = (W - zoneW) / 2;
-  const zoneY = (H - zoneH) / 2;
-
-  ctx.fillStyle = 'rgba(0,0,0,0.55)';
-  // Top
-  ctx.fillRect(0, 0, W, zoneY);
-  // Bottom
-  ctx.fillRect(0, zoneY + zoneH, W, H - zoneY - zoneH);
-  // Left
-  ctx.fillRect(0, zoneY, zoneX, zoneH);
-  // Right
-  ctx.fillRect(zoneX + zoneW, zoneY, W - zoneX - zoneW, zoneH);
-}
-
-// ── ZONE-ONLY DETECTION ──
-// After ZXing detects a code, verify it came from the centre region
-function onDetected(code, video) {
-  if (!code || paused) return;
-
-  // Debounce — ignore same code within 3 seconds
-  const now = Date.now();
-  if (code === lastCode && now - lastTime < 3000) return;
-
-  // Zone check using canvas pixel analysis isn't available in ZXing callback
-  // So we rely on the tight frame + debounce + confirm step to prevent errors
-  lastCode = code;
-  lastTime = now;
-
-  showConfirm(code);
-}
-
-function startNativeDetector(video) {
-  if (!('BarcodeDetector' in window)) {
-    toast('Use manual input — native detection not supported', true);
+  if (typeof ZXing === 'undefined') {
+    startNativeDetector(video);
     return;
   }
 
-  const wrap  = document.getElementById('cam-wrap');
-  const zoneW = 220, zoneH = 80;
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.EAN_13,
+    ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.CODE_128,
+    ZXing.BarcodeFormat.UPC_A,
+  ]);
+  hints.set(ZXing.DecodeHintType.TRY_HARDER, false);
 
-  const detector = new BarcodeDetector({
-    formats: ['ean_13','ean_8','code_128','upc_a']
-  });
-
-  async function detect() {
-    if (paused) { requestAnimationFrame(detect); return; }
-    try {
-      const W = wrap.offsetWidth;
-      const H = wrap.offsetHeight;
-      const zoneX = (W - zoneW) / 2;
-      const zoneY = (H - zoneH) / 2;
-
-      const codes = await detector.detect(video);
-      for (const c of codes) {
-        // Only accept codes whose bounding box centre falls inside our zone
-        const bb = c.boundingBox;
-        const cx = bb.x + bb.width  / 2;
-        const cy = bb.y + bb.height / 2;
-
-        // Scale from video native size to display size
-        const scaleX = W / (video.videoWidth  || W);
-        const scaleY = H / (video.videoHeight || H);
-        const dispX  = cx * scaleX;
-        const dispY  = cy * scaleY;
-
-        if (dispX >= zoneX && dispX <= zoneX + zoneW &&
-            dispY >= zoneY && dispY <= zoneY + zoneH) {
-          const now = Date.now();
-          if (c.rawValue === lastCode && now - lastTime < 3000) continue;
-          lastCode = c.rawValue;
-          lastTime = now;
-          showConfirm(c.rawValue);
-          break;
-        }
-      }
-    } catch(e) {}
-    requestAnimationFrame(detect);
-  }
-
-  video.addEventListener('loadeddata', () => requestAnimationFrame(detect));
+  codeReader = new ZXing.BrowserMultiFormatReader(hints);
+  codeReader.decodeFromConstraints(
+    { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 480 } } },
+    video,
+    (result, err) => {
+      // KEY: check isWaitingConfirm FIRST — if waiting, ignore everything
+      if (!result || isWaitingConfirm) return;
+      onDetected(result.getText());
+    }
+  );
 }
 
-// ── CONFIRM / REJECT ──
-function showConfirm(code) {
-  paused = true;
+// Native BarcodeDetector fallback (Chrome Android)
+function startNativeDetector(video) {
+  if (!('BarcodeDetector' in window)) {
+    toast('Use manual input — scanner not supported in this browser', true);
+    return;
+  }
+  const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','upc_a'] });
+
+  async function detect() {
+    // Hard stop — do nothing while waiting for confirm
+    if (isWaitingConfirm) { setTimeout(detect, 300); return; }
+    try {
+      const codes = await detector.detect(video);
+      if (codes.length > 0 && !isWaitingConfirm) {
+        onDetected(codes[0].rawValue);
+      }
+    } catch(e) {}
+    setTimeout(detect, 200);
+  }
+
+  video.addEventListener('loadeddata', detect);
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(stream => { video.srcObject = stream; video.play(); })
+    .catch(() => toast('Camera error — use manual input', true));
+}
+
+// ─────────────────────────────────────────
+//  DETECTION HANDLER
+// ─────────────────────────────────────────
+function onDetected(code) {
+  // Double-guard
+  if (isWaitingConfirm) return;
+
+  // ✅ PRFM filter — silently ignore anything not starting with 8881400
+  if (!isPRFMBarcode(code)) {
+    console.log('Ignored non-PRFM code:', code);
+    return;
+  }
+
+  // Immediately lock scanner
+  isWaitingConfirm = true;
   pendingCode = code;
 
-  // Flash camera
+  // Visual feedback
   const fl = document.getElementById('flash-overlay');
   fl.classList.add('flash');
-  setTimeout(() => fl.classList.remove('flash'), 150);
+  setTimeout(() => fl.classList.remove('flash'), 140);
 
-  if (navigator.vibrate) navigator.vibrate([40, 30, 40]);
+  if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
 
+  // Freeze scan line animation
+  document.getElementById('frame-box').classList.add('paused');
+
+  // Show paused overlay on camera
+  document.getElementById('cam-paused-overlay').classList.add('show');
+
+  // Show confirm bar
   document.getElementById('confirm-code').textContent = code;
   document.getElementById('confirm-bar').classList.add('visible');
 }
 
+// ─────────────────────────────────────────
+//  CONFIRM / REJECT
+// ─────────────────────────────────────────
 function confirmScan() {
   if (!pendingCode) return;
   recordBarcode(pendingCode);
-  dismissConfirm();
+  resumeScanner();
 }
 
 function rejectScan() {
-  dismissConfirm();
-  toast('Scan rejected — aim again', true);
+  toast('Rejected — scan again', true);
+  resumeScanner();
 }
 
-function dismissConfirm() {
+function resumeScanner() {
   pendingCode = null;
+
+  // Hide confirm bar
   document.getElementById('confirm-bar').classList.remove('visible');
-  // Short pause before resuming so camera doesn't instantly re-trigger
+
+  // Hide camera overlay
+  document.getElementById('cam-paused-overlay').classList.remove('show');
+
+  // Unfreeze scan line
+  document.getElementById('frame-box').classList.remove('paused');
+
+  // Unlock scanner — short delay to prevent instant re-trigger of same code
   setTimeout(() => {
-    paused = false;
-    lastCode = '';  // reset debounce so same code can be re-scanned
-  }, 800);
+    isWaitingConfirm = false;
+  }, 1200);
 }
 
-// ── RECORD ──
+// ─────────────────────────────────────────
+//  RECORD TO TALLY
+// ─────────────────────────────────────────
 function recordBarcode(code) {
   const isNew = !tally[code];
   if (tally[code]) {
@@ -548,18 +383,18 @@ function recordBarcode(code) {
 
 function updateStats() {
   const barcodes = Object.keys(tally);
-  const units = barcodes.reduce((s,b) => s + tally[b].qty, 0);
-  document.getElementById('s-scans').textContent = totalConfirmed;
-  document.getElementById('s-skus').textContent  = barcodes.length;
-  document.getElementById('s-units').textContent = units;
+  const units    = barcodes.reduce((s, b) => s + tally[b].qty, 0);
+  document.getElementById('s-confirmed').textContent = totalConfirmed;
+  document.getElementById('s-skus').textContent      = barcodes.length;
+  document.getElementById('s-units').textContent     = units;
 }
 
 function updateTallyList(code, isNew) {
-  const list = document.getElementById('tally-list');
+  const list  = document.getElementById('tally-list');
   const empty = list.querySelector('.tally-empty');
   if (empty) empty.remove();
 
-  const id = 'bc_' + code.replace(/[^a-z0-9]/gi,'_');
+  const id = 'bc_' + code;
 
   if (isNew) {
     const div = document.createElement('div');
@@ -589,13 +424,11 @@ function itemHTML(code) {
 
 function removeItem(code) {
   delete tally[code];
-  const id = 'bc_' + code.replace(/[^a-z0-9]/gi,'_');
-  const el = document.getElementById(id);
+  const el = document.getElementById('bc_' + code);
   if (el) el.remove();
   updateStats();
   if (Object.keys(tally).length === 0) {
-    document.getElementById('tally-list').innerHTML =
-      '<div class="tally-empty"><span>▦</span>No barcodes confirmed yet.</div>';
+    document.getElementById('tally-list').innerHTML = '<div class="tally-empty"><span>▦</span>No barcodes confirmed yet.</div>';
   }
 }
 
@@ -604,63 +437,18 @@ function clearAll() {
   if (!confirm('Clear all confirmed barcodes?')) return;
   Object.keys(tally).forEach(k => delete tally[k]);
   totalConfirmed = 0;
-  document.getElementById('tally-list').innerHTML =
-    '<div class="tally-empty"><span>▦</span>No barcodes confirmed yet.</div>';
+  document.getElementById('tally-list').innerHTML = '<div class="tally-empty"><span>▦</span>No barcodes confirmed yet.</div>';
   updateStats();
-  dismissConfirm();
+  if (isWaitingConfirm) resumeScanner();
 }
 
-// ── MANUAL ──
+// ─────────────────────────────────────────
+//  MANUAL INPUT
+// ─────────────────────────────────────────
 document.getElementById('manual-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') manualAdd();
 });
 
 function manualAdd() {
   const inp  = document.getElementById('manual-input');
-  const code = inp.value.trim();
-  if (!code) return;
-  recordBarcode(code);
-  inp.value = '';
-  inp.blur();
-}
-
-// ── EXPORT ──
-function openExport() {
-  const barcodes = Object.keys(tally);
-  if (barcodes.length === 0) { toast('Nothing to export yet', true); return; }
-  const now = new Date().toLocaleString();
-  let text = `PRFM INVENTORY SCAN · ${now}\n` + '─'.repeat(40) + '\n';
-  text += `BARCODE\t\t\tQTY\tSCANS\n` + '─'.repeat(40) + '\n';
-  barcodes.forEach(bc => {
-    text += `${bc}\t\t${tally[bc].qty}\t${tally[bc].scans}×\n`;
-  });
-  const total = barcodes.reduce((s,b) => s + tally[b].qty, 0);
-  text += '─'.repeat(40) + `\nTOTAL SKUs: ${barcodes.length}  ·  TOTAL UNITS: ${total}\n`;
-  document.getElementById('export-text').value = text;
-  document.getElementById('export-modal').classList.add('open');
-}
-
-function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
-
-function copyExport() {
-  const ta = document.getElementById('export-text');
-  navigator.clipboard.writeText(ta.value)
-    .then(() => toast('Copied ✓'))
-    .catch(() => { ta.select(); document.execCommand('copy'); toast('Copied ✓'); });
-  closeExport();
-}
-
-// ── TOAST ──
-function toast(msg, isErr) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show' + (isErr ? ' err' : '');
-  clearTimeout(t._t);
-  t._t = setTimeout(() => t.className = '', 2500);
-}
-
-// Redraw mask on resize
-window.addEventListener('resize', drawMask);
-</script>
-</body>
-</html>
+  const code = inp.valu
