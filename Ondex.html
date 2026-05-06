@@ -3,905 +3,257 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>PRFM · Barcode Scanner</title>
+<title>PRFM · Scanner</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;600&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0f0f; color: #f0f0ee; font-family: sans-serif; display: flex; flex-direction: column; height: 100dvh; }
 
-  :root {
-    --bg: #0F0F0F;
-    --surface: #1A1A1A;
-    --border: #2A2A2A;
-    --teal: #00C9B1;
-    --red: #E63946;
-    --chalk: #F0F0EE;
-    --muted: #555;
-    --mono: 'Space Mono', monospace;
-    --sans: 'DM Sans', sans-serif;
+  #log {
+    background: #1a1a1a; border-bottom: 1px solid #2a2a2a;
+    padding: 10px 14px; font-family: monospace; font-size: 11px;
+    color: #00C9B1; min-height: 36px; flex-shrink: 0;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  #cam-wrap { position: relative; width: 100%; height: 200px; background: #000; flex-shrink: 0; }
+  #video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--chalk);
-    font-family: var(--sans);
-    overscroll-behavior: none;
+  #scan-btn {
+    margin: 12px 16px; padding: 18px; background: #00C9B1; color: #000;
+    border: none; border-radius: 12px; font-size: 16px; font-weight: bold;
+    width: calc(100% - 32px); cursor: pointer;
   }
+  #scan-btn:disabled { background: #333; color: #555; }
 
-  body {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
+  #result {
+    margin: 0 16px; padding: 16px; background: #071a18;
+    border: 2px solid #00C9B1; border-radius: 12px; display: none;
   }
+  #result .code { font-family: monospace; font-size: 20px; font-weight: bold; margin-bottom: 12px; word-break: break-all; }
+  #result .btns { display: flex; gap: 10px; }
+  #result .btns button { flex: 1; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: bold; border: none; cursor: pointer; }
+  #result .btns .wrong { background: none; border: 2px solid #E63946; color: #E63946; }
+  #result .btns .add   { background: #00C9B1; color: #000; }
 
-  /* ── TOP BAR ── */
-  .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
+  #tally { flex: 1; overflow-y: auto; padding: 10px 16px; }
+  .item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #1a1a1a; border-radius: 10px; margin-bottom: 8px; font-family: monospace; font-size: 14px; }
+  .item .qty { color: #00C9B1; font-size: 20px; font-weight: bold; }
+  .item .del { background: none; border: none; color: #444; font-size: 16px; cursor: pointer; padding: 4px 8px; }
 
-  .topbar-brand {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--teal);
-  }
+  .empty { text-align: center; padding: 40px; color: #444; font-size: 14px; }
 
-  .clear-all-btn {
-    font-family: var(--mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    color: var(--muted);
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 5px 10px;
-    cursor: pointer;
-  }
+  #manual { display: flex; gap: 8px; padding: 10px 16px 20px; border-top: 1px solid #2a2a2a; }
+  #manual input { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 14px; padding: 12px 14px; outline: none; }
+  #manual button { background: #1a1a1a; border: 1px solid #00C9B1; border-radius: 10px; color: #00C9B1; padding: 12px 16px; font-weight: bold; cursor: pointer; }
 
-  /* ── CAMERA ZONE ── */
-  #cam-wrap {
-    position: relative;
-    width: 100%;
-    height: 220px;
-    background: #000;
-    flex-shrink: 0;
-    overflow: hidden;
-  }
-
-  #cam-wrap video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  /* scanning frame overlay */
-  .frame-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-
-  .frame-box {
-    width: 240px;
-    height: 100px;
-    position: relative;
-  }
-
-  .frame-box::before, .frame-box::after,
-  .frame-box .c1, .frame-box .c2 {
-    content: '';
-    position: absolute;
-    width: 20px; height: 20px;
-    border-color: var(--teal);
-    border-style: solid;
-  }
-  .frame-box::before { top:0; left:0;  border-width: 2px 0 0 2px; }
-  .frame-box::after  { top:0; right:0; border-width: 2px 2px 0 0; }
-  .frame-box .c1     { bottom:0; right:0; border-width: 0 2px 2px 0; }
-  .frame-box .c2     { bottom:0; left:0;  border-width: 0 0 2px 2px; }
-
-  .scan-line {
-    position: absolute;
-    left: 6px; right: 6px;
-    height: 1.5px;
-    background: linear-gradient(90deg, transparent, var(--teal), transparent);
-    animation: sweep 1.8s ease-in-out infinite;
-  }
-
-  @keyframes sweep {
-    0%   { top: 8%; opacity: 0; }
-    15%  { opacity: 1; }
-    85%  { opacity: 1; }
-    100% { top: 92%; opacity: 0; }
-  }
-
-  /* camera idle state */
-  #cam-idle {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    background: #080808;
-  }
-
-  .cam-idle-icon { font-size: 40px; }
-
-  .start-cam-btn {
-    background: var(--teal);
-    color: #0F0F0F;
-    border: none;
-    border-radius: 50px;
-    padding: 13px 32px;
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    cursor: pointer;
-  }
-
-  .cam-hint {
-    font-size: 12px;
-    color: var(--muted);
-  }
-
-  /* flash feedback */
-  #flash-overlay {
-    position: absolute;
-    inset: 0;
-    background: var(--teal);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.05s;
-  }
-
-  #flash-overlay.flash { opacity: 0.35; transition: opacity 0s; }
-
-  /* ── LAST SCANNED ── */
-  .last-bar {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 12px 18px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    min-height: 68px;
-    flex-shrink: 0;
-    transition: background 0.3s;
-  }
-
-  .last-bar.ok  { background: rgba(0,201,177,0.08); }
-  .last-bar.new { animation: bar-pop 0.3s ease; }
-
-  @keyframes bar-pop {
-    0%  { transform: scaleY(0.9); }
-    60% { transform: scaleY(1.02); }
-    100%{ transform: scaleY(1); }
-  }
-
-  .last-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: var(--border);
-    flex-shrink: 0;
-    transition: background 0.2s;
-  }
-
-  .last-dot.lit { background: var(--teal); box-shadow: 0 0 8px var(--teal); }
-
-  .last-info { flex: 1; min-width: 0; }
-
-  .last-code {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--teal);
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .last-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 3px;
-  }
-
-  .last-count {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--chalk);
-    flex-shrink: 0;
-    text-align: right;
-  }
-
-  .last-count strong {
-    display: block;
-    font-size: 22px;
-    color: var(--teal);
-    line-height: 1;
-  }
-
-  /* ── STATS ROW ── */
-  .stats-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 8px;
-    padding: 10px 14px;
-    flex-shrink: 0;
-  }
-
-  .stat-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 8px;
-    text-align: center;
-  }
-
-  .stat-val {
-    font-family: var(--mono);
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--teal);
-    line-height: 1;
-  }
-
-  .stat-lbl {
-    font-family: var(--mono);
-    font-size: 8px;
-    letter-spacing: 0.14em;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-top: 4px;
-  }
-
-  /* ── TALLY LIST ── */
-  .tally-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 18px 4px;
-    flex-shrink: 0;
-  }
-
-  .tally-title {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-
-  .export-btn {
-    font-family: var(--mono);
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    color: var(--teal);
-    background: none;
-    border: 1px solid rgba(0,201,177,0.3);
-    border-radius: 5px;
-    padding: 4px 8px;
-    cursor: pointer;
-  }
-
-  .tally-list {
-    flex: 1;
-    overflow-y: auto;
-    padding: 4px 14px 16px;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .tally-list::-webkit-scrollbar { display: none; }
-
-  .tally-empty {
-    text-align: center;
-    padding: 36px 0;
-    color: var(--muted);
-    font-size: 13px;
-    line-height: 1.8;
-  }
-
-  .tally-empty span { font-size: 28px; display: block; margin-bottom: 8px; }
-
-  .tally-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    margin-bottom: 6px;
-    animation: item-in 0.2s ease;
-  }
-
-  @keyframes item-in {
-    from { transform: translateX(12px); opacity: 0; }
-    to   { transform: translateX(0);    opacity: 1; }
-  }
-
-  .tally-item.bump { animation: bump 0.25s ease; }
-
-  @keyframes bump {
-    0%  { background: rgba(0,201,177,0.15); }
-    100%{ background: var(--surface); }
-  }
-
-  .tally-barcode {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--chalk);
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .tally-scans {
-    font-family: var(--mono);
-    font-size: 10px;
-    color: var(--muted);
-    background: rgba(255,255,255,0.04);
-    border-radius: 4px;
-    padding: 2px 6px;
-    flex-shrink: 0;
-  }
-
-  .tally-qty {
-    font-family: var(--mono);
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--teal);
-    min-width: 32px;
-    text-align: right;
-    flex-shrink: 0;
-  }
-
-  .del-btn {
-    color: #333;
-    background: none;
-    border: none;
-    font-size: 15px;
-    cursor: pointer;
-    padding: 2px 4px;
-    flex-shrink: 0;
-  }
-
-  .del-btn:active { color: var(--red); }
-
-  /* ── MANUAL INPUT BAR ── */
-  .manual-bar {
-    display: flex;
-    gap: 8px;
-    padding: 10px 14px 20px;
-    flex-shrink: 0;
-    border-top: 1px solid var(--border);
-  }
-
-  .manual-input {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--chalk);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 12px 14px;
-    outline: none;
-    -webkit-appearance: none;
-  }
-
-  .manual-input:focus { border-color: var(--teal); }
-  .manual-input::placeholder { color: #333; font-size: 12px; }
-
-  .add-btn {
-    background: var(--teal);
-    color: #0F0F0F;
-    border: none;
-    border-radius: 10px;
-    padding: 12px 18px;
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  /* ── EXPORT MODAL ── */
-  .modal-bg {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.85);
-    z-index: 100;
-    align-items: flex-end;
-    justify-content: center;
-  }
-
-  .modal-bg.open { display: flex; }
-
-  .modal-sheet {
-    background: #1A1A1A;
-    border: 1px solid var(--border);
-    border-radius: 20px 20px 0 0;
-    padding: 28px 24px 40px;
-    width: 100%;
-    max-width: 480px;
-    animation: sheet-up 0.3s cubic-bezier(0.4,0,0.2,1);
-  }
-
-  @keyframes sheet-up {
-    from { transform: translateY(100%); }
-    to   { transform: translateY(0); }
-  }
-
-  .modal-title {
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.18em;
-    color: var(--teal);
-    margin-bottom: 16px;
-  }
-
-  .export-textarea {
-    width: 100%;
-    background: #0F0F0F;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--chalk);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 14px;
-    height: 200px;
-    resize: none;
-    outline: none;
-    line-height: 1.7;
-  }
-
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 14px;
-  }
-
-  .modal-close {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 13px 18px;
-    cursor: pointer;
-    letter-spacing: 0.08em;
-  }
-
-  .modal-copy {
-    flex: 1;
-    background: var(--teal);
-    border: none;
-    border-radius: 10px;
-    color: #0F0F0F;
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 700;
-    padding: 13px;
-    cursor: pointer;
-    letter-spacing: 0.1em;
-  }
-
-  /* TOAST */
-  #toast {
-    position: fixed;
-    bottom: 80px; left: 50%;
-    transform: translateX(-50%) translateY(50px);
-    background: var(--surface);
-    border: 1px solid var(--teal);
-    border-radius: 8px;
-    padding: 10px 18px;
-    font-family: var(--mono);
-    font-size: 11px;
-    color: var(--teal);
-    z-index: 200;
-    transition: transform 0.25s ease;
-    white-space: nowrap;
-    letter-spacing: 0.08em;
-  }
-
-  #toast.show { transform: translateX(-50%) translateY(0); }
+  #topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #2a2a2a; }
+  #topbar span { font-family: monospace; font-size: 11px; letter-spacing: 0.2em; color: #00C9B1; }
+  #topbar button { background: none; border: 1px solid #2a2a2a; border-radius: 6px; color: #555; font-size: 10px; padding: 5px 10px; cursor: pointer; }
 </style>
 </head>
 <body>
 
-<!-- TOP BAR -->
-<div class="topbar">
-  <div class="topbar-brand">PRFM · SCANNER</div>
-  <button class="clear-all-btn" onclick="clearAll()">CLEAR ALL</button>
+<div id="topbar">
+  <span>PRFM · SCANNER</span>
+  <button onclick="clearAll()">CLEAR ALL</button>
 </div>
 
-<!-- CAMERA -->
+<div id="log">Tap START CAMERA to begin</div>
+
 <div id="cam-wrap">
-  <div id="cam-idle">
-    <div class="cam-idle-icon">📷</div>
-    <div class="cam-hint">Tap to start camera</div>
-    <button class="start-cam-btn" onclick="startCamera()">START SCANNING</button>
-  </div>
   <video id="video" playsinline autoplay muted></video>
-  <div class="frame-overlay" id="frame-overlay" style="display:none">
-    <div class="frame-box">
-      <div class="c1"></div>
-      <div class="c2"></div>
-      <div class="scan-line"></div>
-    </div>
-  </div>
-  <div id="flash-overlay"></div>
 </div>
 
-<!-- LAST SCANNED -->
-<div class="last-bar" id="last-bar">
-  <div class="last-dot" id="last-dot"></div>
-  <div class="last-info">
-    <div class="last-code" id="last-code">—</div>
-    <div class="last-label" id="last-label">Waiting for scan…</div>
-  </div>
-  <div class="last-count" id="last-count" style="display:none">
-    <strong id="last-qty">0</strong>
-    total
+<button id="scan-btn" onclick="handleBtn()">START CAMERA</button>
+
+<div id="result">
+  <div class="code" id="result-code"></div>
+  <div class="btns">
+    <button class="wrong" onclick="reject()">✕ WRONG</button>
+    <button class="add"   onclick="confirm()">✓ ADD</button>
   </div>
 </div>
 
-<!-- STATS -->
-<div class="stats-row">
-  <div class="stat-card">
-    <div class="stat-val" id="s-scans">0</div>
-    <div class="stat-lbl">Scans</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-val" id="s-skus">0</div>
-    <div class="stat-lbl">SKUs</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-val" id="s-units">0</div>
-    <div class="stat-lbl">Units</div>
-  </div>
+<div id="tally"><div class="empty">No barcodes yet</div></div>
+
+<div id="manual">
+  <input id="m-input" type="text" inputmode="numeric" placeholder="Type barcode…" autocomplete="off" />
+  <button onclick="manualAdd()">ADD</button>
 </div>
-
-<!-- TALLY HEADER -->
-<div class="tally-header">
-  <div class="tally-title">Scanned Tally</div>
-  <button class="export-btn" onclick="openExport()">EXPORT ↗</button>
-</div>
-
-<!-- TALLY LIST -->
-<div class="tally-list" id="tally-list">
-  <div class="tally-empty">
-    <span>▦</span>
-    No barcodes yet.<br>Start camera and scan.
-  </div>
-</div>
-
-<!-- MANUAL INPUT -->
-<div class="manual-bar">
-  <input class="manual-input" id="manual-input" type="text"
-    inputmode="numeric" placeholder="Type barcode manually…"
-    autocomplete="off" autocapitalize="none" />
-  <button class="add-btn" onclick="manualAdd()">ADD</button>
-</div>
-
-<!-- EXPORT MODAL -->
-<div class="modal-bg" id="export-modal">
-  <div class="modal-sheet">
-    <div class="modal-title">EXPORT · BARCODE TALLY</div>
-    <textarea class="export-textarea" id="export-text" readonly></textarea>
-    <div class="modal-actions">
-      <button class="modal-close" onclick="closeExport()">CLOSE</button>
-      <button class="modal-copy" onclick="copyExport()">COPY TO CLIPBOARD</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
-
-<!-- Barcode detection library (ZXing - works best on mobile) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing/0.19.1/zxing.min.js" crossorigin="anonymous"></script>
 
 <script>
-// ── STATE ──
-const tally = {};   // barcode -> { qty, scans }
-let totalScans = 0;
-let codeReader = null;
-let scanning = false;
-let lastCode = '';
-let lastTime = 0;
+  const tally = {};
+  let stream = null;
+  let detector = null;
+  let cameraStarted = false;
+  let pendingCode = null;
+  let busy = false;
 
-// ── CAMERA ──
-async function startCamera() {
-  document.getElementById('cam-idle').style.display = 'none';
-  document.getElementById('frame-overlay').style.display = 'flex';
+  function log(msg) {
+    document.getElementById('log').textContent = msg;
+  }
 
-  const video = document.getElementById('video');
-
-  try {
-    // Use ZXing if available
-    if (typeof ZXing !== 'undefined') {
-      codeReader = new ZXing.BrowserMultiFormatReader();
-      codeReader.decodeFromConstraints(
-        {
-          video: {
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 480 }
-          }
-        },
-        video,
-        (result, err) => {
-          if (result) onDetected(result.getText());
-        }
-      );
+  async function handleBtn() {
+    if (!cameraStarted) {
+      await startCamera();
     } else {
-      // Fallback: just open camera stream, use BarcodeDetector API if available
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 480 } }
+      await doScan();
+    }
+  }
+
+  async function startCamera() {
+    const btn = document.getElementById('scan-btn');
+    btn.disabled = true;
+    log('Requesting camera permission…');
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       });
+
+      const video = document.getElementById('video');
       video.srcObject = stream;
       video.play();
-      startBarcodeDetector(video);
+
+      // Wait for video to be ready
+      await new Promise((resolve) => {
+        video.onloadedmetadata = resolve;
+        setTimeout(resolve, 2000); // fallback
+      });
+
+      log('Camera ready — tap SCAN');
+
+      // Check for BarcodeDetector
+      if ('BarcodeDetector' in window) {
+        detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
+        log('Camera ready · BarcodeDetector available ✓');
+      } else {
+        log('Camera ready · BarcodeDetector NOT supported on this browser');
+      }
+
+      cameraStarted = true;
+      btn.disabled = false;
+      btn.textContent = '▦  TAP TO SCAN';
+
+    } catch (err) {
+      log('ERROR: ' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function doScan() {
+    if (busy) return;
+    busy = true;
+
+    const btn = document.getElementById('scan-btn');
+    btn.disabled = true;
+    btn.textContent = 'READING…';
+
+    const video = document.getElementById('video');
+
+    if (!detector) {
+      log('BarcodeDetector not supported. Use manual input or try Chrome on Android.');
+      btn.disabled = false;
+      btn.textContent = '▦  TAP TO SCAN';
+      busy = false;
+      return;
     }
 
-    scanning = true;
-
-  } catch(e) {
-    console.error(e);
-    document.getElementById('cam-idle').style.display = 'flex';
-    document.getElementById('frame-overlay').style.display = 'none';
-    toast('Camera error — use manual input below');
-  }
-}
-
-// Native BarcodeDetector API fallback (Chrome on Android)
-function startBarcodeDetector(video) {
-  if (!('BarcodeDetector' in window)) {
-    toast('Use manual input — camera detection not supported in this browser');
-    return;
-  }
-
-  const detector = new BarcodeDetector({
-    formats: ['ean_13','ean_8','code_128','code_39','upc_a','upc_e','qr_code','data_matrix']
-  });
-
-  async function detect() {
-    if (!scanning) return;
     try {
       const codes = await detector.detect(video);
-      if (codes.length > 0) onDetected(codes[0].rawValue);
-    } catch(e) {}
-    requestAnimationFrame(detect);
-  }
 
-  video.addEventListener('loadeddata', () => requestAnimationFrame(detect));
-}
+      if (codes.length === 0) {
+        log('Nothing detected. Hold the barcode closer and tap again.');
+      } else {
+        const code = codes[0].rawValue;
+        log('Detected: ' + code);
 
-// ── ON BARCODE DETECTED ──
-function onDetected(code) {
-  if (!code) return;
-
-  // Debounce — same code within 2.5s = skip
-  const now = Date.now();
-  if (code === lastCode && now - lastTime < 2500) return;
-  lastCode = code;
-  lastTime = now;
-
-  // Flash
-  const fl = document.getElementById('flash-overlay');
-  fl.classList.add('flash');
-  setTimeout(() => fl.classList.remove('flash'), 150);
-
-  // Vibrate
-  if (navigator.vibrate) navigator.vibrate(70);
-
-  recordBarcode(code);
-}
-
-// ── RECORD ──
-function recordBarcode(code) {
-  const isNew = !tally[code];
-
-  if (tally[code]) {
-    tally[code].qty += 1;
-    tally[code].scans += 1;
-  } else {
-    tally[code] = { qty: 1, scans: 1 };
-  }
-
-  totalScans += 1;
-
-  updateLastBar(code);
-  updateStats();
-  updateTallyList(code, isNew);
-}
-
-// ── LAST BAR ──
-function updateLastBar(code) {
-  const bar   = document.getElementById('last-bar');
-  const dot   = document.getElementById('last-dot');
-  const cEl   = document.getElementById('last-code');
-  const lEl   = document.getElementById('last-label');
-  const cnt   = document.getElementById('last-count');
-  const qEl   = document.getElementById('last-qty');
-
-  bar.classList.remove('ok','new');
-  void bar.offsetWidth;
-  bar.classList.add('ok','new');
-
-  dot.classList.add('lit');
-
-  cEl.textContent = code;
-  lEl.textContent = `Last scanned · ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
-
-  cnt.style.display = 'block';
-  qEl.textContent = tally[code].qty;
-}
-
-// ── STATS ──
-function updateStats() {
-  const barcodes = Object.keys(tally);
-  const units = barcodes.reduce((s,b) => s + tally[b].qty, 0);
-  document.getElementById('s-scans').textContent = totalScans;
-  document.getElementById('s-skus').textContent  = barcodes.length;
-  document.getElementById('s-units').textContent = units;
-}
-
-// ── TALLY LIST ──
-function updateTallyList(code, isNew) {
-  const list = document.getElementById('tally-list');
-
-  // Remove empty state
-  const empty = list.querySelector('.tally-empty');
-  if (empty) empty.remove();
-
-  const id = 'bc_' + code.replace(/[^a-z0-9]/gi, '_');
-
-  if (isNew) {
-    const div = document.createElement('div');
-    div.className = 'tally-item';
-    div.id = id;
-    div.innerHTML = itemHTML(code);
-    list.insertBefore(div, list.firstChild);
-  } else {
-    const el = document.getElementById(id);
-    if (el) {
-      el.innerHTML = itemHTML(code);
-      el.classList.remove('bump');
-      void el.offsetWidth;
-      el.classList.add('bump');
+        if (!code.startsWith('8881400')) {
+          log('Not a PRFM code: ' + code + ' — try again');
+        } else {
+          // Show confirm
+          pendingCode = code;
+          document.getElementById('result-code').textContent = code;
+          document.getElementById('result').style.display = 'block';
+          log('Confirm or reject below ↓');
+          if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
+        }
+      }
+    } catch (err) {
+      log('Scan error: ' + err.message);
     }
+
+    btn.disabled = false;
+    btn.textContent = '▦  TAP TO SCAN';
+    busy = false;
   }
-}
 
-function itemHTML(code) {
-  const item = tally[code];
-  return `
-    <div class="tally-barcode">${code}</div>
-    <div class="tally-scans">${item.scans}×</div>
-    <div class="tally-qty">${item.qty}</div>
-    <button class="del-btn" onclick="removeItem('${code}')">✕</button>
-  `;
-}
-
-function removeItem(code) {
-  delete tally[code];
-  const id = 'bc_' + code.replace(/[^a-z0-9]/gi, '_');
-  const el = document.getElementById(id);
-  if (el) el.remove();
-  updateStats();
-
-  if (Object.keys(tally).length === 0) {
-    document.getElementById('tally-list').innerHTML =
-      '<div class="tally-empty"><span>▦</span>No barcodes yet.<br>Start camera and scan.</div>';
+  function confirm() {
+    if (!pendingCode) return;
+    addToTally(pendingCode);
+    pendingCode = null;
+    document.getElementById('result').style.display = 'none';
+    log('Added ✓ — tap to scan next');
   }
-}
 
-function clearAll() {
-  if (Object.keys(tally).length === 0) return;
-  if (!confirm('Clear all scanned barcodes?')) return;
+  function reject() {
+    pendingCode = null;
+    document.getElementById('result').style.display = 'none';
+    log('Rejected — tap to scan again');
+  }
 
-  Object.keys(tally).forEach(k => delete tally[k]);
-  totalScans = 0;
-  lastCode = '';
+  function addToTally(code) {
+    const isNew = !tally[code];
+    if (tally[code]) { tally[code].qty++; tally[code].scans++; }
+    else { tally[code] = { qty: 1, scans: 1 }; }
+    renderTally();
+  }
 
-  document.getElementById('tally-list').innerHTML =
-    '<div class="tally-empty"><span>▦</span>No barcodes yet.<br>Start camera and scan.</div>';
+  function renderTally() {
+    const div = document.getElementById('tally');
+    const codes = Object.keys(tally);
+    if (!codes.length) { div.innerHTML = '<div class="empty">No barcodes yet</div>'; return; }
+    div.innerHTML = codes.map(c =>
+      `<div class="item">
+        <div>
+          <div>${c}</div>
+          <div style="font-size:10px;color:#555;margin-top:3px">${tally[c].scans}× scanned</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="qty">${tally[c].qty}</div>
+          <button class="del" onclick="removeItem('${c}')">✕</button>
+        </div>
+      </div>`
+    ).join('');
+  }
 
-  document.getElementById('last-code').textContent = '—';
-  document.getElementById('last-label').textContent = 'Waiting for scan…';
-  document.getElementById('last-count').style.display = 'none';
-  document.getElementById('last-dot').classList.remove('lit');
-  document.getElementById('last-bar').classList.remove('ok');
+  function removeItem(code) {
+    delete tally[code];
+    renderTally();
+  }
 
-  updateStats();
-  toast('Tally cleared');
-}
+  function clearAll() {
+    if (!Object.keys(tally).length) return;
+    if (!confirm('Clear all?')) return;
+    Object.keys(tally).forEach(k => delete tally[k]);
+    renderTally();
+    document.getElementById('result').style.display = 'none';
+    pendingCode = null;
+    log('Cleared');
+  }
 
-// ── MANUAL ──
-document.getElementById('manual-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') manualAdd();
-});
-
-function manualAdd() {
-  const inp = document.getElementById('manual-input');
-  const code = inp.value.trim();
-  if (!code) return;
-  if (navigator.vibrate) navigator.vibrate(40);
-  recordBarcode(code);
-  inp.value = '';
-  inp.blur();
-  toast('Added: ' + code);
-}
-
-// ── EXPORT ──
-function openExport() {
-  const barcodes = Object.keys(tally);
-  if (barcodes.length === 0) { toast('Nothing to export yet'); return; }
-
-  const now = new Date().toLocaleString();
-  let text = `PRFM INVENTORY SCAN · ${now}\n`;
-  text += '─'.repeat(40) + '\n';
-  text += `BARCODE\t\tQTY\tSCANS\n`;
-  text += '─'.repeat(40) + '\n';
-
-  barcodes.forEach(bc => {
-    const item = tally[bc];
-    text += `${bc}\t\t${item.qty}\t${item.scans}×\n`;
+  document.getElementById('m-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') manualAdd();
   });
 
-  text += '─'.repeat(40) + '\n';
-  const total = barcodes.reduce((s,b) => s + tally[b].qty, 0);
-  text += `TOTAL SKUs: ${barcodes.length} · TOTAL UNITS: ${total}\n`;
-
-  document.getElementById('export-text').value = text;
-  document.getElementById('export-modal').classList.add('open');
-}
-
-function closeExport() {
-  document.getElementById('export-modal').classList.remove('open');
-}
-
-function copyExport() {
-  const ta = document.getElementById('export-text');
-  ta.select();
-  try {
-    navigator.clipboard.writeText(ta.value).then(() => toast('Copied to clipboard ✓'));
-  } catch(e) {
-    document.execCommand('copy');
-    toast('Copied to clipboard ✓');
+  function manualAdd() {
+    const inp = document.getElementById('m-input');
+    const code = inp.value.trim();
+    if (!code) return;
+    if (!code.startsWith('8881400')) { log('Not a PRFM barcode'); return; }
+    addToTally(code);
+    inp.value = '';
+    log('Manually added: ' + code);
   }
-  closeExport();
-}
-
-// ── TOAST ──
-function toast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._t);
-  t._t = setTimeout(() => t.classList.remove('show'), 2500);
-}
 </script>
 </body>
 </html>
