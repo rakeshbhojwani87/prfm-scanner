@@ -3,257 +3,843 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PRFM Scanner">
+<meta name="theme-color" content="#0f0f0f">
 <title>PRFM · Scanner</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0f0f0f; color: #f0f0ee; font-family: sans-serif; display: flex; flex-direction: column; height: 100dvh; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: #0f0f0f; color: #f0f0ee; font-family: 'DM Sans', sans-serif; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
 
-  #log {
-    background: #1a1a1a; border-bottom: 1px solid #2a2a2a;
-    padding: 10px 14px; font-family: monospace; font-size: 11px;
-    color: #00C9B1; min-height: 36px; flex-shrink: 0;
+  /* ── SETUP SCREEN ── */
+  #setup-screen {
+    position: fixed; inset: 0; background: #0f0f0f; z-index: 1000;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 32px 24px;
   }
+  .setup-logo { font-family: monospace; font-size: 13px; letter-spacing: 0.3em; color: #00C9B1; margin-bottom: 8px; }
+  .setup-title { font-size: 24px; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.02em; }
+  .setup-sub { font-size: 13px; color: #aaa; margin-bottom: 32px; text-align: center; line-height: 1.5; }
 
-  #cam-wrap { position: relative; width: 100%; height: 200px; background: #000; flex-shrink: 0; }
+  .setup-field { width: 100%; margin-bottom: 14px; }
+  .setup-label { font-family: monospace; font-size: 10px; letter-spacing: 0.18em; color: #aaa; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .setup-input {
+    width: 100%; background: #1e1e1e; border: 1px solid #444; border-radius: 10px;
+    color: #f0f0ee; font-family: monospace; font-size: 13px; padding: 13px 14px; outline: none;
+  }
+  .setup-input:focus { border-color: #00C9B1; }
+  .setup-input::placeholder { color: #888; }
+
+  .setup-save-btn {
+    width: 100%; background: #00C9B1; color: #000; border: none; border-radius: 12px;
+    padding: 17px; font-size: 15px; font-weight: 700; font-family: monospace;
+    letter-spacing: 0.12em; cursor: pointer; margin-top: 8px;
+  }
+  .setup-note { font-size: 11px; color: #999; text-align: center; margin-top: 14px; line-height: 1.6; }
+
+  /* ── MAIN APP ── */
+  #app { display: none; flex-direction: column; height: 100dvh; }
+  #app.show { display: flex; }
+
+  /* TOP BAR */
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px; border-bottom: 1px solid #444; flex-shrink: 0;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .brand { font-family: monospace; font-size: 11px; letter-spacing: 0.2em; color: #00C9B1; }
+  .mode-badge {
+    font-family: monospace; font-size: 9px; letter-spacing: 0.12em;
+    padding: 3px 8px; border-radius: 20px; border: 1px solid #444; color: #aaa;
+  }
+  .mode-badge.mobile { border-color: #00C9B1; color: #00C9B1; }
+  .mode-badge.desktop { border-color: #9DFF33; color: #9DFF33; }
+
+  .topbar-right { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    background: none; border: 1px solid #444; border-radius: 6px;
+    color: #aaa; font-size: 10px; font-family: monospace; padding: 5px 8px; cursor: pointer;
+    letter-spacing: 0.08em;
+  }
+  .icon-btn:hover { border-color: #999; color: #888; }
+
+  /* STATUS BAR */
+  #status {
+    background: #1e1e1e; border-bottom: 1px solid #444;
+    padding: 8px 16px; font-family: monospace; font-size: 11px;
+    color: #00C9B1; flex-shrink: 0; min-height: 34px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  #status .dot { width: 6px; height: 6px; border-radius: 50%; background: #00C9B1; flex-shrink: 0; animation: blink 2s infinite; }
+  #status .dot.off { background: #666; animation: none; }
+  #status .dot.err { background: #E63946; animation: none; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ── MOBILE: CAMERA ── */
+  #mobile-section { display: none; flex-direction: column; flex-shrink: 0; }
+  #mobile-section.show { display: flex; }
+
+  #cam-wrap { position: relative; width: 100%; height: 200px; background: #000; overflow: hidden; }
   #video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  #scan-btn {
-    margin: 12px 16px; padding: 18px; background: #00C9B1; color: #000;
-    border: none; border-radius: 12px; font-size: 16px; font-weight: bold;
-    width: calc(100% - 32px); cursor: pointer;
+  .mask-top    { position: absolute; top:0; left:0; right:0; height: calc(50% - 45px); background: rgba(0,0,0,0.65); pointer-events: none; }
+  .mask-bottom { position: absolute; bottom:0; left:0; right:0; height: calc(50% - 45px); background: rgba(0,0,0,0.65); pointer-events: none; }
+  .mask-left   { position: absolute; top: calc(50% - 45px); bottom: calc(50% - 45px); left:0; width: calc(50% - 130px); background: rgba(0,0,0,0.65); pointer-events: none; }
+  .mask-right  { position: absolute; top: calc(50% - 45px); bottom: calc(50% - 45px); right:0; width: calc(50% - 130px); background: rgba(0,0,0,0.65); pointer-events: none; }
+
+  .frame-box { position: absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .frame-inner { width: 260px; height: 90px; position: relative; }
+  .frame-inner::before,.frame-inner::after,.frame-inner .c1,.frame-inner .c2 {
+    content:''; position:absolute; width:18px; height:18px; border-color:#00C9B1; border-style:solid;
   }
-  #scan-btn:disabled { background: #333; color: #555; }
+  .frame-inner::before { top:0; left:0; border-width:2.5px 0 0 2.5px; }
+  .frame-inner::after  { top:0; right:0; border-width:2.5px 2.5px 0 0; }
+  .frame-inner .c1     { bottom:0; right:0; border-width:0 2.5px 2.5px 0; }
+  .frame-inner .c2     { bottom:0; left:0; border-width:0 0 2.5px 2.5px; }
+  .scan-line { position:absolute; left:4px; right:4px; height:1.5px; background:linear-gradient(90deg,transparent,#00C9B1,transparent); animation:sweep 1.8s ease-in-out infinite; }
+  @keyframes sweep { 0%{top:5%;opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{top:95%;opacity:0} }
 
-  #result {
-    margin: 0 16px; padding: 16px; background: #071a18;
-    border: 2px solid #00C9B1; border-radius: 12px; display: none;
+  #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
+
+  #cam-idle { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#080808; z-index:5; }
+  .start-cam-btn { background:#00C9B1; color:#000; border:none; border-radius:50px; padding:12px 28px; font-family:monospace; font-size:12px; font-weight:700; letter-spacing:0.12em; cursor:pointer; }
+
+  #mobile-scan-btn {
+    margin: 10px 16px 8px; padding: 16px; background: #00C9B1; color: #000;
+    border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
+    font-family: monospace; letter-spacing: 0.12em; cursor: pointer;
   }
-  #result .code { font-family: monospace; font-size: 20px; font-weight: bold; margin-bottom: 12px; word-break: break-all; }
-  #result .btns { display: flex; gap: 10px; }
-  #result .btns button { flex: 1; padding: 14px; border-radius: 10px; font-size: 14px; font-weight: bold; border: none; cursor: pointer; }
-  #result .btns .wrong { background: none; border: 2px solid #E63946; color: #E63946; }
-  #result .btns .add   { background: #00C9B1; color: #000; }
+  #mobile-scan-btn:disabled { background: #1e1e1e; color: #aaa; border: 1px solid #444; }
 
-  #tally { flex: 1; overflow-y: auto; padding: 10px 16px; }
-  .item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: #1a1a1a; border-radius: 10px; margin-bottom: 8px; font-family: monospace; font-size: 14px; }
-  .item .qty { color: #00C9B1; font-size: 20px; font-weight: bold; }
-  .item .del { background: none; border: none; color: #444; font-size: 16px; cursor: pointer; padding: 4px 8px; }
+  /* ── DESKTOP: GUN INPUT ── */
+  #desktop-section { display: none; flex-direction: column; flex-shrink: 0; padding: 14px 16px 10px; border-bottom: 1px solid #444; }
+  #desktop-section.show { display: flex; }
 
-  .empty { text-align: center; padding: 40px; color: #444; font-size: 14px; }
+  .gun-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+  #gun-input {
+    flex: 1; background: #1e1e1e; border: 2px solid #00C9B1; border-radius: 10px;
+    color: #f0f0ee; font-family: monospace; font-size: 16px; padding: 13px 16px; outline: none;
+  }
+  #gun-input::placeholder { color: #888; font-size: 13px; }
 
-  #manual { display: flex; gap: 8px; padding: 10px 16px 20px; border-top: 1px solid #2a2a2a; }
-  #manual input { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 14px; padding: 12px 14px; outline: none; }
-  #manual button { background: #1a1a1a; border: 1px solid #00C9B1; border-radius: 10px; color: #00C9B1; padding: 12px 16px; font-weight: bold; cursor: pointer; }
+  /* Auto-add toggle */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; }
+  .toggle-label { font-family: monospace; font-size: 11px; color: #aaa; letter-spacing: 0.1em; }
+  .toggle-label span { color: #f0f0ee; }
 
-  #topbar { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #2a2a2a; }
-  #topbar span { font-family: monospace; font-size: 11px; letter-spacing: 0.2em; color: #00C9B1; }
-  #topbar button { background: none; border: 1px solid #2a2a2a; border-radius: 6px; color: #555; font-size: 10px; padding: 5px 10px; cursor: pointer; }
+  .toggle-switch { position: relative; width: 48px; height: 26px; cursor: pointer; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute; inset: 0; background: #3a3a3a; border-radius: 26px; transition: background 0.2s;
+  }
+  .toggle-track::before {
+    content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
+    background: #888; border-radius: 50%; transition: transform 0.2s, background 0.2s;
+  }
+  .toggle-switch input:checked + .toggle-track { background: rgba(0,201,177,0.2); border: 1px solid #00C9B1; }
+  .toggle-switch input:checked + .toggle-track::before { transform: translateX(22px); background: #00C9B1; }
+
+  .auto-badge {
+    font-family: monospace; font-size: 10px; letter-spacing: 0.12em;
+    padding: 3px 8px; border-radius: 4px; margin-left: 8px;
+  }
+  .auto-badge.on  { background: rgba(0,201,177,0.1); color: #00C9B1; border: 1px solid rgba(0,201,177,0.3); }
+  .auto-badge.off { background: rgba(255,255,255,0.04); color: #aaa; border: 1px solid #444; }
+
+  /* ── CONFIRM BAR ── */
+  #confirm-bar {
+    background: #071a18; border-bottom: 2px solid #00C9B1;
+    padding: 14px 16px; flex-shrink: 0; display: none;
+  }
+  #confirm-bar.show { display: block; animation: drop 0.2s ease; }
+  @keyframes drop { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+  .confirm-label { font-family: monospace; font-size: 9px; letter-spacing: 0.2em; color: #00C9B1; margin-bottom: 6px; text-transform: uppercase; }
+  .confirm-code  { font-family: monospace; font-size: 22px; font-weight: 700; color: #f0f0ee; margin-bottom: 12px; word-break: break-all; }
+  .confirm-btns  { display: flex; gap: 10px; }
+  .btn-wrong { flex:1; background:none; border:1.5px solid #E63946; border-radius:10px; color:#E63946; font-family:monospace; font-size:13px; font-weight:700; padding:13px; cursor:pointer; }
+  .btn-add   { flex:2; background:#00C9B1; border:none; border-radius:10px; color:#000; font-family:monospace; font-size:14px; font-weight:700; padding:13px; cursor:pointer; }
+
+  /* ── STATS ── */
+  .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:10px 14px; flex-shrink:0; }
+  .stat-card { background:#1e1e1e; border:1px solid #444; border-radius:10px; padding:10px 8px; text-align:center; }
+  .stat-val { font-family:monospace; font-size:22px; font-weight:700; color:#00C9B1; line-height:1; }
+  .stat-lbl { font-family:monospace; font-size:8px; letter-spacing:0.14em; color:#aaa; text-transform:uppercase; margin-top:4px; }
+
+  /* ── TALLY ── */
+  .tally-header { display:flex; align-items:center; justify-content:space-between; padding:6px 16px 4px; flex-shrink:0; }
+  .tally-title { font-family:monospace; font-size:9px; letter-spacing:0.2em; color:#aaa; text-transform:uppercase; }
+  .export-btn { font-family:monospace; font-size:9px; color:#00C9B1; background:none; border:1px solid rgba(0,201,177,0.3); border-radius:5px; padding:4px 8px; cursor:pointer; }
+
+  #tally-list { flex:1; overflow-y:auto; padding:4px 14px 10px; -webkit-overflow-scrolling:touch; }
+  #tally-list::-webkit-scrollbar { display:none; }
+  .empty { text-align:center; padding:28px 0; color:#888; font-size:13px; line-height:1.8; }
+  .empty span { font-size:24px; display:block; margin-bottom:8px; }
+
+  .item { display:flex; align-items:center; gap:12px; padding:11px 14px; background:#1e1e1e; border:1px solid #444; border-radius:10px; margin-bottom:6px; animation:item-in 0.2s ease; }
+  @keyframes item-in { from{transform:translateX(8px);opacity:0} to{transform:translateX(0);opacity:1} }
+  .item.bump { animation:bump 0.3s ease; }
+  @keyframes bump { 0%{background:rgba(0,201,177,0.15)} 100%{background:#1e1e1e} }
+  .item-info { flex:1; min-width:0; }
+  .item-code { font-family:monospace; font-size:13px; color:#f0f0ee; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item-name { font-size:11px; color:#aaa; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item-scans { font-family:monospace; font-size:10px; color:#999; background:rgba(255,255,255,0.03); border-radius:4px; padding:2px 6px; flex-shrink:0; }
+  .item-qty { font-family:monospace; font-size:20px; font-weight:700; color:#00C9B1; min-width:32px; text-align:right; flex-shrink:0; }
+  .del-btn { color:#666; background:none; border:none; font-size:15px; cursor:pointer; padding:2px 4px; flex-shrink:0; }
+  .del-btn:active { color:#E63946; }
+
+  /* SYNC STATUS */
+  .sync-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .sync-dot.pending { background:#888; }
+  .sync-dot.sending { background:#FFA500; animation:blink 0.5s infinite; }
+  .sync-dot.ok      { background:#00C9B1; }
+  .sync-dot.fail    { background:#E63946; }
+
+  /* ── MANUAL / BOTTOM ── */
+  .bottom-bar { display:flex; gap:8px; padding:8px 14px 16px; flex-shrink:0; border-top:1px solid #2a2a2a; }
+  .manual-input { flex:1; background:#1e1e1e; border:1px solid #444; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:13px; padding:11px 14px; outline:none; -webkit-appearance:none; }
+  .manual-input:focus { border-color:#00C9B1; }
+  .manual-input::placeholder { color:#666; font-size:12px; }
+  .add-btn { background:#1e1e1e; color:#00C9B1; border:1px solid #00C9B1; border-radius:10px; padding:11px 16px; font-family:monospace; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; }
+
+  /* EXPORT MODAL */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; align-items:flex-end; justify-content:center; }
+  .modal-bg.open { display:flex; }
+  .modal-sheet { background:#1e1e1e; border:1px solid #444; border-radius:20px 20px 0 0; padding:28px 24px 40px; width:100%; animation:sheet-up 0.3s cubic-bezier(0.4,0,0.2,1); }
+  @keyframes sheet-up { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal-title { font-family:monospace; font-size:12px; letter-spacing:0.18em; color:#00C9B1; margin-bottom:16px; }
+  .export-ta { width:100%; background:#0f0f0f; border:1px solid #444; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:12px; padding:14px; height:200px; resize:none; outline:none; line-height:1.7; }
+  .modal-actions { display:flex; gap:10px; margin-top:14px; }
+  .modal-close { background:none; border:1px solid #444; border-radius:10px; color:#aaa; font-family:monospace; font-size:12px; padding:13px 18px; cursor:pointer; }
+  .modal-copy { flex:1; background:#00C9B1; border:none; border-radius:10px; color:#000; font-family:monospace; font-size:12px; font-weight:700; padding:13px; cursor:pointer; }
+
+  /* TOAST */
+  #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(50px); background:#1e1e1e; border:1px solid #00C9B1; border-radius:8px; padding:10px 18px; font-family:monospace; font-size:11px; color:#00C9B1; z-index:200; transition:transform 0.25s ease; white-space:nowrap; }
+  #toast.show { transform:translateX(-50%) translateY(0); }
+  #toast.err  { border-color:#E63946; color:#E63946; }
+  #toast.warn { border-color:#FFA500; color:#FFA500; }
 </style>
 </head>
 <body>
 
-<div id="topbar">
-  <span>PRFM · SCANNER</span>
-  <button onclick="clearAll()">CLEAR ALL</button>
+<!-- ══ SETUP SCREEN ══ -->
+<div id="setup-screen">
+  <div class="setup-logo">PRFM</div>
+  <div class="setup-title">Scanner Setup</div>
+  <div class="setup-sub">One-time setup on this device.<br>Your credentials are saved locally and never shared.</div>
+
+  <div class="setup-field">
+    <label class="setup-label">Google Apps Script URL</label>
+    <input class="setup-input" id="setup-url" type="url" inputmode="url"
+      placeholder="https://script.google.com/macros/s/..." autocomplete="off" autocapitalize="none" />
+  </div>
+
+  <div class="setup-field">
+    <label class="setup-label">Access Key</label>
+    <input class="setup-input" id="setup-key" type="password"
+      placeholder="Your secret key" autocomplete="off" />
+  </div>
+
+  <button class="setup-save-btn" onclick="saveSetup()">SAVE &amp; START SCANNING →</button>
+  <div class="setup-note">Saved on this device only. You won't be asked again.<br>To reset: tap ⚙ Settings in the app.</div>
 </div>
 
-<div id="log">Tap START CAMERA to begin</div>
+<!-- ══ MAIN APP ══ -->
+<div id="app">
 
-<div id="cam-wrap">
-  <video id="video" playsinline autoplay muted></video>
+  <div id="topbar">
+    <div class="topbar-left">
+      <div class="brand">PRFM · SCANNER</div>
+      <div class="mode-badge" id="mode-badge">DETECTING…</div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" onclick="clearAll()">CLEAR</button>
+      <button class="icon-btn" onclick="showSetup()">⚙</button>
+    </div>
+  </div>
+
+  <div id="status"><div class="dot off" id="status-dot"></div><span id="status-text">Initialising…</span></div>
+
+  <!-- MOBILE CAMERA SECTION -->
+  <div id="mobile-section">
+    <div id="cam-wrap">
+      <div id="cam-idle">
+        <div style="font-size:13px;color:#aaa">Tap to start camera</div>
+        <button class="start-cam-btn" onclick="startCamera()">START CAMERA</button>
+      </div>
+      <video id="video" playsinline autoplay muted></video>
+      <div class="mask-top"></div><div class="mask-bottom"></div>
+      <div class="mask-left"></div><div class="mask-right"></div>
+      <div class="frame-box"><div class="frame-inner"><div class="c1"></div><div class="c2"></div><div class="scan-line"></div></div></div>
+      <div id="flash"></div>
+    </div>
+    <button id="mobile-scan-btn" onclick="captureAndDecode()" disabled>START CAMERA FIRST</button>
+  </div>
+
+  <!-- DESKTOP GUN SECTION -->
+  <div id="desktop-section">
+    <div class="gun-row">
+      <input id="gun-input" type="text" inputmode="numeric"
+        placeholder="⌨ Ready — scan with gun or type barcode…"
+        autocomplete="off" autocapitalize="none" autofocus />
+    </div>
+    <div class="toggle-row">
+      <div class="toggle-label">
+        Auto-add on scan
+        <span class="auto-badge off" id="auto-badge">CONFIRM MODE</span>
+      </div>
+      <label class="toggle-switch">
+        <input type="checkbox" id="auto-toggle" onchange="toggleAutoAdd()" />
+        <div class="toggle-track"></div>
+      </label>
+    </div>
+  </div>
+
+  <!-- CONFIRM BAR -->
+  <div id="confirm-bar">
+    <div class="confirm-label">▦ Confirm barcode</div>
+    <div class="confirm-code" id="confirm-code">—</div>
+    <div class="confirm-btns">
+      <button class="btn-wrong" onclick="rejectScan()">✕ WRONG</button>
+      <button class="btn-add"   onclick="confirmScan()">✓ ADD</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" id="s-confirmed">0</div><div class="stat-lbl">Confirmed</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-skus">0</div><div class="stat-lbl">SKUs</div></div>
+    <div class="stat-card"><div class="stat-val" id="s-units">0</div><div class="stat-lbl">Units</div></div>
+  </div>
+
+  <div class="tally-header">
+    <div class="tally-title">Tally <span id="sheet-status" style="color:#aaa;font-size:8px;margin-left:4px;"></span></div>
+    <button class="export-btn" onclick="openExport()">EXPORT ↗</button>
+  </div>
+
+  <div id="tally-list"><div class="empty"><span>▦</span>No barcodes confirmed yet.</div></div>
+
+  <div class="bottom-bar">
+    <input class="manual-input" id="manual-input" type="text" inputmode="numeric"
+      placeholder="Type barcode manually…" autocomplete="off" autocapitalize="none"/>
+    <button class="add-btn" onclick="manualAdd()">ADD</button>
+  </div>
+
 </div>
 
-<button id="scan-btn" onclick="handleBtn()">START CAMERA</button>
-
-<div id="result">
-  <div class="code" id="result-code"></div>
-  <div class="btns">
-    <button class="wrong" onclick="reject()">✕ WRONG</button>
-    <button class="add"   onclick="confirm()">✓ ADD</button>
+<!-- EXPORT MODAL -->
+<div class="modal-bg" id="export-modal">
+  <div class="modal-sheet">
+    <div class="modal-title">EXPORT · SESSION TALLY</div>
+    <textarea class="export-ta" id="export-text" readonly></textarea>
+    <div class="modal-actions">
+      <button class="modal-close" onclick="closeExport()">CLOSE</button>
+      <button class="modal-copy"  onclick="copyExport()">COPY</button>
+    </div>
   </div>
 </div>
 
-<div id="tally"><div class="empty">No barcodes yet</div></div>
-
-<div id="manual">
-  <input id="m-input" type="text" inputmode="numeric" placeholder="Type barcode…" autocomplete="off" />
-  <button onclick="manualAdd()">ADD</button>
-</div>
+<div id="toast"></div>
 
 <script>
-  const tally = {};
-  let stream = null;
-  let detector = null;
-  let cameraStarted = false;
-  let pendingCode = null;
-  let busy = false;
+// ─────────────────────────────────────────
+//  CONFIG — loaded from localStorage
+// ─────────────────────────────────────────
+let SCRIPT_URL = '';
+let SECRET_KEY = '';
 
-  function log(msg) {
-    document.getElementById('log').textContent = msg;
+const PRODUCT_NAMES = {
+  '8881400030000': 'Marathon · S',
+  '8881400030017': 'Marathon · M',
+  '8881400030024': 'Marathon · L',
+  '8881400030031': 'Marathon · XL',
+  '8881400030048': 'Functional · S',
+  '8881400030055': 'Functional · M',
+  '8881400030062': 'Functional · L',
+  '8881400030079': 'Functional · XL',
+  '8881400030086': 'Cycling · S',
+  '8881400030093': 'Cycling · M',
+  '8881400030109': 'Cycling · L',
+  '8881400030116': 'Cycling · XL',
+};
+
+// ─────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────
+const tally = {};
+let totalConfirmed = 0;
+let pendingCode    = null;
+let isMobile       = false;
+let autoAdd        = false;
+let audioCtx       = null;
+let detector       = null;
+let cameraStarted  = false;
+let scanBusy       = false;
+let sessionId      = getTodaySession();
+
+// ─────────────────────────────────────────
+//  INIT
+// ─────────────────────────────────────────
+window.addEventListener('load', () => {
+  SCRIPT_URL = localStorage.getItem('prfm_url')  || '';
+  SECRET_KEY = localStorage.getItem('prfm_key')  || '';
+
+  if (!SCRIPT_URL || !SECRET_KEY) {
+    document.getElementById('setup-screen').style.display = 'flex';
+    document.getElementById('app').classList.remove('show');
+  } else {
+    launchApp();
   }
+});
 
-  async function handleBtn() {
-    if (!cameraStarted) {
-      await startCamera();
-    } else {
-      await doScan();
+function launchApp() {
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+
+  // Detect mobile vs desktop
+  isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+
+  const badge = document.getElementById('mode-badge');
+  if (isMobile) {
+    document.getElementById('mobile-section').classList.add('show');
+    badge.textContent = 'MOBILE';
+    badge.classList.add('mobile');
+    setStatus('Tap START CAMERA to begin', false);
+  } else {
+    document.getElementById('desktop-section').classList.add('show');
+    badge.textContent = 'DESKTOP · GUN';
+    badge.classList.add('desktop');
+    setStatus('Ready — scan with USB gun', false);
+    // Focus gun input
+    setTimeout(() => document.getElementById('gun-input').focus(), 100);
+  }
+}
+
+// ─────────────────────────────────────────
+//  SETUP SCREEN
+// ─────────────────────────────────────────
+function saveSetup() {
+  const url = document.getElementById('setup-url').value.trim();
+  const key = document.getElementById('setup-key').value.trim();
+
+  if (!url || !key) { toast('Enter both URL and access key', true); return; }
+  if (!url.startsWith('https://script.google.com')) { toast('URL looks wrong — check it', true); return; }
+
+  localStorage.setItem('prfm_url', url);
+  localStorage.setItem('prfm_key', key);
+  SCRIPT_URL = url;
+  SECRET_KEY = key;
+
+  launchApp();
+}
+
+function showSetup() {
+  document.getElementById('setup-url').value = SCRIPT_URL;
+  document.getElementById('setup-key').value = SECRET_KEY;
+  document.getElementById('setup-screen').style.display = 'flex';
+  document.getElementById('app').classList.remove('show');
+}
+
+// ─────────────────────────────────────────
+//  PRFM FILTER
+// ─────────────────────────────────────────
+function isPRFM(code) {
+  return typeof code === 'string' && code.startsWith('8881400');
+}
+
+// ─────────────────────────────────────────
+//  DESKTOP — USB GUN INPUT
+// ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const gunInput = document.getElementById('gun-input');
+
+  gunInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      initAudio();
+      const code = gunInput.value.trim();
+      gunInput.value = '';
+      if (!code) return;
+      handleScannedCode(code, 'gun');
     }
-  }
+  });
 
-  async function startCamera() {
-    const btn = document.getElementById('scan-btn');
-    btn.disabled = true;
-    log('Requesting camera permission…');
-
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      });
-
-      const video = document.getElementById('video');
-      video.srcObject = stream;
-      video.play();
-
-      // Wait for video to be ready
-      await new Promise((resolve) => {
-        video.onloadedmetadata = resolve;
-        setTimeout(resolve, 2000); // fallback
-      });
-
-      log('Camera ready — tap SCAN');
-
-      // Check for BarcodeDetector
-      if ('BarcodeDetector' in window) {
-        detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
-        log('Camera ready · BarcodeDetector available ✓');
-      } else {
-        log('Camera ready · BarcodeDetector NOT supported on this browser');
-      }
-
-      cameraStarted = true;
-      btn.disabled = false;
-      btn.textContent = '▦  TAP TO SCAN';
-
-    } catch (err) {
-      log('ERROR: ' + err.message);
-      btn.disabled = false;
+  // Re-focus gun input when clicking anywhere on desktop
+  document.addEventListener('click', (e) => {
+    if (!isMobile && !e.target.closest('button') && !e.target.closest('input') && !e.target.closest('.modal-bg')) {
+      gunInput.focus();
     }
-  }
+  });
 
-  async function doScan() {
-    if (busy) return;
-    busy = true;
-
-    const btn = document.getElementById('scan-btn');
-    btn.disabled = true;
-    btn.textContent = 'READING…';
-
-    const video = document.getElementById('video');
-
-    if (!detector) {
-      log('BarcodeDetector not supported. Use manual input or try Chrome on Android.');
-      btn.disabled = false;
-      btn.textContent = '▦  TAP TO SCAN';
-      busy = false;
-      return;
-    }
-
-    try {
-      const codes = await detector.detect(video);
-
-      if (codes.length === 0) {
-        log('Nothing detected. Hold the barcode closer and tap again.');
-      } else {
-        const code = codes[0].rawValue;
-        log('Detected: ' + code);
-
-        if (!code.startsWith('8881400')) {
-          log('Not a PRFM code: ' + code + ' — try again');
-        } else {
-          // Show confirm
-          pendingCode = code;
-          document.getElementById('result-code').textContent = code;
-          document.getElementById('result').style.display = 'block';
-          log('Confirm or reject below ↓');
-          if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
-        }
-      }
-    } catch (err) {
-      log('Scan error: ' + err.message);
-    }
-
-    btn.disabled = false;
-    btn.textContent = '▦  TAP TO SCAN';
-    busy = false;
-  }
-
-  function confirm() {
-    if (!pendingCode) return;
-    addToTally(pendingCode);
-    pendingCode = null;
-    document.getElementById('result').style.display = 'none';
-    log('Added ✓ — tap to scan next');
-  }
-
-  function reject() {
-    pendingCode = null;
-    document.getElementById('result').style.display = 'none';
-    log('Rejected — tap to scan again');
-  }
-
-  function addToTally(code) {
-    const isNew = !tally[code];
-    if (tally[code]) { tally[code].qty++; tally[code].scans++; }
-    else { tally[code] = { qty: 1, scans: 1 }; }
-    renderTally();
-  }
-
-  function renderTally() {
-    const div = document.getElementById('tally');
-    const codes = Object.keys(tally);
-    if (!codes.length) { div.innerHTML = '<div class="empty">No barcodes yet</div>'; return; }
-    div.innerHTML = codes.map(c =>
-      `<div class="item">
-        <div>
-          <div>${c}</div>
-          <div style="font-size:10px;color:#555;margin-top:3px">${tally[c].scans}× scanned</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <div class="qty">${tally[c].qty}</div>
-          <button class="del" onclick="removeItem('${c}')">✕</button>
-        </div>
-      </div>`
-    ).join('');
-  }
-
-  function removeItem(code) {
-    delete tally[code];
-    renderTally();
-  }
-
-  function clearAll() {
-    if (!Object.keys(tally).length) return;
-    if (!confirm('Clear all?')) return;
-    Object.keys(tally).forEach(k => delete tally[k]);
-    renderTally();
-    document.getElementById('result').style.display = 'none';
-    pendingCode = null;
-    log('Cleared');
-  }
-
-  document.getElementById('m-input').addEventListener('keydown', e => {
+  document.getElementById('manual-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') manualAdd();
   });
 
-  function manualAdd() {
-    const inp = document.getElementById('m-input');
-    const code = inp.value.trim();
-    if (!code) return;
-    if (!code.startsWith('8881400')) { log('Not a PRFM barcode'); return; }
-    addToTally(code);
-    inp.value = '';
-    log('Manually added: ' + code);
+  // Confirm with Enter key on desktop
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && pendingCode && document.getElementById('confirm-bar').classList.contains('show')) {
+      e.preventDefault();
+      confirmScan();
+    }
+    if (e.key === 'Escape' && pendingCode) {
+      rejectScan();
+    }
+  });
+});
+
+function toggleAutoAdd() {
+  autoAdd = document.getElementById('auto-toggle').checked;
+  const badge = document.getElementById('auto-badge');
+  if (autoAdd) {
+    badge.textContent = 'AUTO-ADD';
+    badge.className = 'auto-badge on';
+    setStatus('Auto-add ON — scans commit instantly', false);
+  } else {
+    badge.textContent = 'CONFIRM MODE';
+    badge.className = 'auto-badge off';
+    setStatus('Confirm mode — review each scan', false);
   }
+  document.getElementById('gun-input').focus();
+}
+
+// ─────────────────────────────────────────
+//  MOBILE — CAMERA
+// ─────────────────────────────────────────
+async function startCamera() {
+  document.getElementById('cam-idle').style.display = 'none';
+  setStatus('Starting camera…', true);
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+
+    if ('BarcodeDetector' in window) {
+      detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','upc_a','upc_e'] });
+      setStatus('Camera ready · Tap to scan', false);
+    } else {
+      setStatus('Camera ready · BarcodeDetector not supported — use manual input', false);
+    }
+
+    cameraStarted = true;
+    const btn = document.getElementById('mobile-scan-btn');
+    btn.disabled = false;
+    btn.textContent = '▦  TAP TO SCAN';
+
+  } catch(e) {
+    setStatus('Camera error: ' + e.message, false);
+    document.getElementById('cam-idle').style.display = 'flex';
+  }
+}
+
+async function captureAndDecode() {
+  if (scanBusy || !cameraStarted) return;
+  scanBusy = true;
+  initAudio();
+
+  const btn   = document.getElementById('mobile-scan-btn');
+  const video = document.getElementById('video');
+  btn.disabled = true;
+  btn.textContent = 'READING…';
+
+  // Flash
+  const fl = document.getElementById('flash');
+  fl.style.opacity = '0.4';
+  setTimeout(() => fl.style.opacity = '0', 120);
+
+  let found = null;
+  try {
+    if (detector) {
+      const results = await detector.detect(video);
+      if (results.length > 0) found = results[0].rawValue;
+    }
+  } catch(e) { found = null; }
+
+  if (found) {
+    handleScannedCode(found, 'camera');
+  } else {
+    setStatus('Nothing detected — hold closer and try again', false);
+    if (navigator.vibrate) navigator.vibrate(200);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '▦  TAP TO SCAN';
+  scanBusy = false;
+}
+
+// ─────────────────────────────────────────
+//  HANDLE SCANNED CODE (both modes)
+// ─────────────────────────────────────────
+function handleScannedCode(code, source) {
+  if (!isPRFM(code)) {
+    setStatus('Not a PRFM barcode: ' + code, false);
+    if (navigator.vibrate) navigator.vibrate(200);
+    if (!isMobile) document.getElementById('gun-input').focus();
+    return;
+  }
+
+  // Desktop auto-add mode — skip confirm
+  if (source === 'gun' && autoAdd) {
+    recordBarcode(code);
+    if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+    return;
+  }
+
+  // Confirm mode
+  pendingCode = code;
+  document.getElementById('confirm-code').textContent = code;
+  document.getElementById('confirm-bar').classList.add('show');
+  setStatus('Confirm or reject ↓', true);
+  if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
+}
+
+// ─────────────────────────────────────────
+//  CONFIRM / REJECT
+// ─────────────────────────────────────────
+function confirmScan() {
+  if (!pendingCode) return;
+  initAudio();
+  recordBarcode(pendingCode);
+  pendingCode = null;
+  document.getElementById('confirm-bar').classList.remove('show');
+  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+}
+
+function rejectScan() {
+  pendingCode = null;
+  document.getElementById('confirm-bar').classList.remove('show');
+  setStatus('Rejected — scan again', false);
+  toast('Rejected', true);
+  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+}
+
+// ─────────────────────────────────────────
+//  RECORD + SEND TO SHEET
+// ─────────────────────────────────────────
+function recordBarcode(code) {
+  const isNew = !tally[code];
+  if (tally[code]) { tally[code].qty++; tally[code].scans++; tally[code].synced = 'pending'; }
+  else { tally[code] = { qty: 1, scans: 1, synced: 'pending' }; }
+  totalConfirmed++;
+
+  beep();
+  if (navigator.vibrate) navigator.vibrate(60);
+
+  updateStats();
+  updateTallyList(code, isNew);
+  setStatus('✓ Added: ' + code + ' (' + (PRODUCT_NAMES[code] || 'Unknown') + ')', false);
+
+  // Send to Google Sheet
+  sendToSheet(code, 1);
+}
+
+async function sendToSheet(barcode, qty) {
+  if (!SCRIPT_URL || !SECRET_KEY) return;
+
+  // Update sync dot to sending
+  updateSyncDot(barcode, 'sending');
+
+  try {
+    const res = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        secret:  SECRET_KEY,
+        barcode: barcode,
+        qty:     qty,
+        session: sessionId
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      updateSyncDot(barcode, 'ok');
+      document.getElementById('sheet-status').textContent = '● sheet live';
+      document.getElementById('sheet-status').style.color = '#00C9B1';
+    } else {
+      updateSyncDot(barcode, 'fail');
+      console.error('Sheet error:', data.error);
+    }
+  } catch(e) {
+    updateSyncDot(barcode, 'fail');
+    toast('Sheet sync failed — saved locally', 'warn');
+    console.error('Network error:', e);
+  }
+}
+
+function updateSyncDot(code, state) {
+  if (tally[code]) tally[code].synced = state;
+  const id = 'item_' + code;
+  const el = document.getElementById(id);
+  if (el) {
+    const dot = el.querySelector('.sync-dot');
+    if (dot) dot.className = 'sync-dot ' + state;
+  }
+}
+
+// ─────────────────────────────────────────
+//  TALLY UI
+// ─────────────────────────────────────────
+function updateStats() {
+  const barcodes = Object.keys(tally);
+  const units    = barcodes.reduce((s,b) => s + tally[b].qty, 0);
+  document.getElementById('s-confirmed').textContent = totalConfirmed;
+  document.getElementById('s-skus').textContent      = barcodes.length;
+  document.getElementById('s-units').textContent     = units;
+}
+
+function updateTallyList(code, isNew) {
+  const list  = document.getElementById('tally-list');
+  const empty = list.querySelector('.empty');
+  if (empty) empty.remove();
+
+  const id = 'item_' + code;
+
+  if (isNew) {
+    const div = document.createElement('div');
+    div.className = 'item'; div.id = id;
+    div.innerHTML = itemHTML(code);
+    list.insertBefore(div, list.firstChild);
+  } else {
+    const el = document.getElementById(id);
+    if (el) {
+      el.innerHTML = itemHTML(code);
+      el.classList.remove('bump');
+      void el.offsetWidth;
+      el.classList.add('bump');
+    }
+  }
+}
+
+function itemHTML(code) {
+  const item = tally[code] || { qty:1, scans:1, synced:'pending' };
+  const name = PRODUCT_NAMES[code] || '—';
+  return `
+    <div class="item-info">
+      <div class="item-code">${code}</div>
+      <div class="item-name">${name}</div>
+    </div>
+    <div class="sync-dot ${item.synced || 'pending'}"></div>
+    <div class="item-scans">${item.scans}×</div>
+    <div class="item-qty">${item.qty}</div>
+    <button class="del-btn" onclick="removeItem('${code}')">✕</button>`;
+}
+
+function removeItem(code) {
+  delete tally[code];
+  const el = document.getElementById('item_' + code);
+  if (el) el.remove();
+  updateStats();
+  if (!Object.keys(tally).length) {
+    document.getElementById('tally-list').innerHTML = '<div class="empty"><span>▦</span>No barcodes confirmed yet.</div>';
+  }
+}
+
+function clearAll() {
+  if (!Object.keys(tally).length) return;
+  if (!confirm('Clear all confirmed barcodes?')) return;
+  Object.keys(tally).forEach(k => delete tally[k]);
+  totalConfirmed = 0;
+  document.getElementById('tally-list').innerHTML = '<div class="empty"><span>▦</span>No barcodes confirmed yet.</div>';
+  document.getElementById('confirm-bar').classList.remove('show');
+  pendingCode = null;
+  updateStats();
+  setStatus('Cleared — ready for new session', false);
+  if (!isMobile) document.getElementById('gun-input').focus();
+}
+
+// ─────────────────────────────────────────
+//  MANUAL INPUT
+// ─────────────────────────────────────────
+function manualAdd() {
+  const inp  = document.getElementById('manual-input');
+  const code = inp.value.trim();
+  if (!code) return;
+  if (!isPRFM(code)) { toast('Must start with 8881400', true); return; }
+  initAudio();
+  recordBarcode(code);
+  inp.value = '';
+  inp.blur();
+  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+}
+
+// ─────────────────────────────────────────
+//  AUDIO
+// ─────────────────────────────────────────
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const buf = audioCtx.createBuffer(1, 1, 22050);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
+}
+
+function beep() {
+  if (!audioCtx) return;
+  const osc  = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(1480, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.18);
+}
+
+// ─────────────────────────────────────────
+//  STATUS BAR
+// ─────────────────────────────────────────
+function setStatus(msg, active) {
+  document.getElementById('status-text').textContent = msg;
+  const dot = document.getElementById('status-dot');
+  dot.className = 'dot ' + (active ? '' : 'off');
+}
+
+// ─────────────────────────────────────────
+//  EXPORT
+// ─────────────────────────────────────────
+function openExport() {
+  const barcodes = Object.keys(tally);
+  if (!barcodes.length) { toast('Nothing to export yet', true); return; }
+  const now = new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' });
+  let text = `PRFM INVENTORY SCAN\n${now}\nSession: ${sessionId}\n${'─'.repeat(38)}\n`;
+  text += `BARCODE          PRODUCT              QTY\n${'─'.repeat(38)}\n`;
+  barcodes.forEach(bc => {
+    const name = (PRODUCT_NAMES[bc] || 'Unknown').padEnd(20);
+    text += `${bc}  ${name}  ${tally[bc].qty}\n`;
+  });
+  const total = barcodes.reduce((s,b) => s + tally[b].qty, 0);
+  text += `${'─'.repeat(38)}\nSKUs: ${barcodes.length}   TOTAL UNITS: ${total}\n`;
+  document.getElementById('export-text').value = text;
+  document.getElementById('export-modal').classList.add('open');
+}
+
+function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
+function copyExport() {
+  const ta = document.getElementById('export-text');
+  navigator.clipboard.writeText(ta.value).then(() => toast('Copied ✓')).catch(() => { ta.select(); document.execCommand('copy'); toast('Copied ✓'); });
+  closeExport();
+}
+
+// ─────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────
+function getTodaySession() {
+  const d = new Date();
+  return d.toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore' }).replace(/\//g, '-');
+}
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show' + (type === true ? ' err' : type === 'warn' ? ' warn' : '');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = '', 2800);
+}
 </script>
 </body>
 </html>
