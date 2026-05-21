@@ -638,37 +638,50 @@ function recordBarcode(code) {
 async function sendToSheet(barcode, qty) {
   if (!SCRIPT_URL || !SECRET_KEY) return;
  
-  // Update sync dot to sending
   updateSyncDot(barcode, 'sending');
+  setStatus('Sending to sheet…', true);
  
   try {
-    // Send as text/plain to avoid CORS preflight — Apps Script accepts this
     const payload = JSON.stringify({
       secret:  SECRET_KEY,
       barcode: barcode,
       qty:     qty,
       session: sessionId
     });
+ 
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
-      body: payload
+      body: payload,
+      redirect: 'follow'
     });
  
-    const data = await res.json();
+    const raw = await res.text();
+    setStatus('Raw response: ' + raw.substring(0, 80), false);
+ 
+    let data;
+    try { data = JSON.parse(raw); }
+    catch(pe) {
+      updateSyncDot(barcode, 'fail');
+      setStatus('Parse error: ' + raw.substring(0, 100), false);
+      toast('Parse error — see status bar', true);
+      return;
+    }
  
     if (data.ok) {
       updateSyncDot(barcode, 'ok');
+      setStatus('✓ Sheet updated: ' + (data.product || barcode), false);
       document.getElementById('sheet-status').textContent = '● sheet live';
       document.getElementById('sheet-status').style.color = '#00C9B1';
     } else {
       updateSyncDot(barcode, 'fail');
-      console.error('Sheet error:', data.error);
+      setStatus('Sheet error: ' + (data.error || 'unknown'), false);
+      toast('Sheet error: ' + (data.error || 'unknown'), true);
     }
   } catch(e) {
     updateSyncDot(barcode, 'fail');
-    toast('Sheet sync failed — saved locally', 'warn');
-    console.error('Network error:', e);
+    setStatus('Network error: ' + e.message, false);
+    toast('Network error: ' + e.message, true);
   }
 }
  
