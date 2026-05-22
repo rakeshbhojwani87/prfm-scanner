@@ -749,7 +749,8 @@ async function sendToSheet(barcode, qty) {
       qty:     qty,
       batchId: currentBatch.batchId
     });
-    const res = await fetch(SCRIPT_URL, {
+    const url = SCRIPT_URL + '?secret=' + encodeURIComponent(SECRET_KEY);
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: payload,
@@ -902,7 +903,9 @@ function copyExport() {
 //  HELPERS
 // ─────────────────────────────────────────
 function callScript(payload) {
-  return fetch(SCRIPT_URL, {
+  // Append secret as URL param — fallback for iOS Safari body parsing issues
+  const url = SCRIPT_URL + '?secret=' + encodeURIComponent(SECRET_KEY);
+  return fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({ ...payload, secret: SECRET_KEY }),
