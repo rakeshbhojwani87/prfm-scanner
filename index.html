@@ -10,344 +10,310 @@
 <title>PRFM · Scanner</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  body { background: #0f0f0f; color: #f0f0ee; font-family: 'DM Sans', sans-serif; display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
- 
-  /* ── SETUP SCREEN ── */
-  #setup-screen {
-    position: fixed; inset: 0; background: #0f0f0f; z-index: 1000;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 32px 24px;
-  }
-  .setup-logo { font-family: monospace; font-size: 13px; letter-spacing: 0.3em; color: #00C9B1; margin-bottom: 8px; }
-  .setup-title { font-size: 24px; font-weight: 600; margin-bottom: 6px; letter-spacing: -0.02em; }
-  .setup-sub { font-size: 13px; color: #aaa; margin-bottom: 32px; text-align: center; line-height: 1.5; }
- 
-  .setup-field { width: 100%; margin-bottom: 14px; }
-  .setup-label { font-family: monospace; font-size: 10px; letter-spacing: 0.18em; color: #aaa; text-transform: uppercase; margin-bottom: 6px; display: block; }
-  .setup-input {
-    width: 100%; background: #1e1e1e; border: 1px solid #444; border-radius: 10px;
-    color: #f0f0ee; font-family: monospace; font-size: 13px; padding: 13px 14px; outline: none;
-  }
-  .setup-input:focus { border-color: #00C9B1; }
-  .setup-input::placeholder { color: #888; }
- 
-  .setup-save-btn {
-    width: 100%; background: #00C9B1; color: #000; border: none; border-radius: 12px;
-    padding: 17px; font-size: 15px; font-weight: 700; font-family: monospace;
-    letter-spacing: 0.12em; cursor: pointer; margin-top: 8px;
-  }
-  .setup-note { font-size: 11px; color: #999; text-align: center; margin-top: 14px; line-height: 1.6; }
- 
+  html, body { height: 100%; background: #0f0f0f; color: #f0f0ee; font-family: sans-serif; overscroll-behavior: none; }
+  body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+
+  /* ── SCREENS ── */
+  .screen { display: none; flex-direction: column; height: 100dvh; overflow-y: auto; }
+  .screen.show { display: flex; }
+
+  /* ── SETUP ── */
+  #setup-screen { align-items: center; justify-content: center; padding: 32px 24px; }
+  .setup-logo  { font-family: monospace; font-size: 12px; letter-spacing: 0.3em; color: #00C9B1; margin-bottom: 8px; }
+  .setup-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .setup-sub   { font-size: 13px; color: #aaa; margin-bottom: 28px; text-align: center; line-height: 1.5; }
+  .field       { width: 100%; margin-bottom: 14px; }
+  .field label { display: block; font-family: monospace; font-size: 10px; letter-spacing: 0.15em; color: #aaa; text-transform: uppercase; margin-bottom: 6px; }
+  .field input { width: 100%; background: #1e1e1e; border: 1px solid #444; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 13px; padding: 13px 14px; outline: none; }
+  .field input:focus { border-color: #00C9B1; }
+  .field input::placeholder { color: #555; }
+  .btn-teal  { width: 100%; background: #00C9B1; color: #000; border: none; border-radius: 12px; padding: 17px; font-family: monospace; font-size: 14px; font-weight: 700; letter-spacing: 0.12em; cursor: pointer; margin-top: 6px; }
+  .setup-note { font-size: 11px; color: #666; text-align: center; margin-top: 14px; line-height: 1.6; }
+
+  /* ── BATCH SCREEN ── */
+  #batch-screen { align-items: center; justify-content: center; padding: 32px 24px; }
+  .batch-logo  { font-family: monospace; font-size: 12px; letter-spacing: 0.3em; color: #00C9B1; margin-bottom: 8px; }
+  .batch-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .batch-sub   { font-size: 13px; color: #aaa; margin-bottom: 28px; text-align: center; line-height: 1.5; }
+  .btn-outline { width: 100%; background: none; border: 1px solid #444; border-radius: 12px; padding: 15px; font-family: monospace; font-size: 12px; color: #aaa; cursor: pointer; margin-top: 8px; letter-spacing: 0.1em; }
+
   /* ── MAIN APP ── */
-  #app { display: none; flex-direction: column; height: 100dvh; }
-  #app.show { display: flex; }
- 
+  #app-screen { overflow: hidden; }
+
   /* TOP BAR */
-  #topbar {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px; border-bottom: 1px solid #444; flex-shrink: 0;
-  }
-  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #333; flex-shrink: 0; }
+  .topbar-left { display: flex; flex-direction: column; gap: 2px; }
   .brand { font-family: monospace; font-size: 11px; letter-spacing: 0.2em; color: #00C9B1; }
-  .mode-badge {
-    font-family: monospace; font-size: 9px; letter-spacing: 0.12em;
-    padding: 3px 8px; border-radius: 20px; border: 1px solid #444; color: #aaa;
-  }
-  .mode-badge.mobile { border-color: #00C9B1; color: #00C9B1; }
-  .mode-badge.desktop { border-color: #9DFF33; color: #9DFF33; }
- 
-  .topbar-right { display: flex; align-items: center; gap: 8px; }
-  .icon-btn {
-    background: none; border: 1px solid #444; border-radius: 6px;
-    color: #aaa; font-size: 10px; font-family: monospace; padding: 5px 8px; cursor: pointer;
-    letter-spacing: 0.08em;
-  }
-  .icon-btn:hover { border-color: #999; color: #888; }
- 
-  /* STATUS BAR */
-  #status {
-    background: #1e1e1e; border-bottom: 1px solid #444;
-    padding: 8px 16px; font-family: monospace; font-size: 11px;
-    color: #00C9B1; flex-shrink: 0; min-height: 34px;
-    display: flex; align-items: center; gap: 8px;
-  }
-  #status .dot { width: 6px; height: 6px; border-radius: 50%; background: #00C9B1; flex-shrink: 0; animation: blink 2s infinite; }
-  #status .dot.off { background: #666; animation: none; }
-  #status .dot.err { background: #E63946; animation: none; }
+  .batch-tag { font-family: monospace; font-size: 10px; color: #aaa; }
+  .batch-tag .open-dot   { color: #00C9B1; }
+  .batch-tag .closed-dot { color: #E63946; }
+  .topbar-right { display: flex; gap: 8px; }
+  .tb-btn { background: none; border: 1px solid #444; border-radius: 6px; color: #aaa; font-family: monospace; font-size: 10px; padding: 5px 9px; cursor: pointer; letter-spacing: 0.08em; }
+  .tb-btn.danger { border-color: #E63946; color: #E63946; }
+
+  /* STATUS */
+  #status-bar { background: #1a1a1a; border-bottom: 1px solid #333; padding: 8px 16px; font-family: monospace; font-size: 11px; color: #00C9B1; flex-shrink: 0; min-height: 33px; display: flex; align-items: center; gap: 8px; }
+  .s-dot { width: 6px; height: 6px; border-radius: 50%; background: #00C9B1; flex-shrink: 0; animation: blink 2s infinite; }
+  .s-dot.off { background: #555; animation: none; }
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
- 
-  /* ── MOBILE: CAMERA ── */
-  #mobile-section { display: none; flex-direction: column; flex-shrink: 0; }
-  #mobile-section.show { display: flex; }
- 
-  #cam-wrap { position: relative; width: 100%; height: 200px; background: #000; overflow: hidden; }
+
+  /* CLOSED BANNER */
+  #closed-banner { background: #1A0A0B; border-bottom: 2px solid #E63946; padding: 14px 16px; text-align: center; flex-shrink: 0; display: none; }
+  #closed-banner.show { display: block; }
+  .closed-title { font-family: monospace; font-size: 13px; color: #E63946; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .closed-sub   { font-size: 12px; color: #aaa; }
+
+  /* CAMERA */
+  #cam-wrap { position: relative; width: 100%; height: 200px; background: #000; flex-shrink: 0; overflow: hidden; }
   #video { width: 100%; height: 100%; object-fit: cover; display: block; }
- 
-  .mask-top    { position: absolute; top:0; left:0; right:0; height: calc(50% - 45px); background: rgba(0,0,0,0.65); pointer-events: none; }
-  .mask-bottom { position: absolute; bottom:0; left:0; right:0; height: calc(50% - 45px); background: rgba(0,0,0,0.65); pointer-events: none; }
-  .mask-left   { position: absolute; top: calc(50% - 45px); bottom: calc(50% - 45px); left:0; width: calc(50% - 130px); background: rgba(0,0,0,0.65); pointer-events: none; }
-  .mask-right  { position: absolute; top: calc(50% - 45px); bottom: calc(50% - 45px); right:0; width: calc(50% - 130px); background: rgba(0,0,0,0.65); pointer-events: none; }
- 
-  .frame-box { position: absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-  .frame-inner { width: 260px; height: 90px; position: relative; }
-  .frame-inner::before,.frame-inner::after,.frame-inner .c1,.frame-inner .c2 {
-    content:''; position:absolute; width:18px; height:18px; border-color:#00C9B1; border-style:solid;
-  }
+  .mask-t { position:absolute; top:0; left:0; right:0; height:calc(50% - 45px); background:rgba(0,0,0,0.65); pointer-events:none; }
+  .mask-b { position:absolute; bottom:0; left:0; right:0; height:calc(50% - 45px); background:rgba(0,0,0,0.65); pointer-events:none; }
+  .mask-l { position:absolute; top:calc(50% - 45px); bottom:calc(50% - 45px); left:0; width:calc(50% - 130px); background:rgba(0,0,0,0.65); pointer-events:none; }
+  .mask-r { position:absolute; top:calc(50% - 45px); bottom:calc(50% - 45px); right:0; width:calc(50% - 130px); background:rgba(0,0,0,0.65); pointer-events:none; }
+  .frame-box { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .frame-inner { width:260px; height:90px; position:relative; }
+  .frame-inner::before,.frame-inner::after,.frame-inner .c1,.frame-inner .c2 { content:''; position:absolute; width:18px; height:18px; border-color:#00C9B1; border-style:solid; }
   .frame-inner::before { top:0; left:0; border-width:2.5px 0 0 2.5px; }
   .frame-inner::after  { top:0; right:0; border-width:2.5px 2.5px 0 0; }
   .frame-inner .c1     { bottom:0; right:0; border-width:0 2.5px 2.5px 0; }
   .frame-inner .c2     { bottom:0; left:0; border-width:0 0 2.5px 2.5px; }
   .scan-line { position:absolute; left:4px; right:4px; height:1.5px; background:linear-gradient(90deg,transparent,#00C9B1,transparent); animation:sweep 1.8s ease-in-out infinite; }
   @keyframes sweep { 0%{top:5%;opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{top:95%;opacity:0} }
- 
-  #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
- 
-  #cam-idle { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#080808; z-index:5; }
+  #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:5; }
+  #cam-idle { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#080808; z-index:4; }
   .start-cam-btn { background:#00C9B1; color:#000; border:none; border-radius:50px; padding:12px 28px; font-family:monospace; font-size:12px; font-weight:700; letter-spacing:0.12em; cursor:pointer; }
- 
-  #mobile-scan-btn {
-    margin: 10px 16px 8px; padding: 16px; background: #00C9B1; color: #000;
-    border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
-    font-family: monospace; letter-spacing: 0.12em; cursor: pointer;
-  }
-  #mobile-scan-btn:disabled { background: #1e1e1e; color: #aaa; border: 1px solid #444; }
- 
-  /* ── DESKTOP: GUN INPUT ── */
-  #desktop-section { display: none; flex-direction: column; flex-shrink: 0; padding: 14px 16px 10px; border-bottom: 1px solid #444; }
-  #desktop-section.show { display: flex; }
- 
-  .gun-row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
-  #gun-input {
-    flex: 1; background: #1e1e1e; border: 2px solid #00C9B1; border-radius: 10px;
-    color: #f0f0ee; font-family: monospace; font-size: 16px; padding: 13px 16px; outline: none;
-  }
-  #gun-input::placeholder { color: #888; font-size: 13px; }
- 
-  /* Auto-add toggle */
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; }
-  .toggle-label { font-family: monospace; font-size: 11px; color: #aaa; letter-spacing: 0.1em; }
-  .toggle-label span { color: #f0f0ee; }
- 
-  .toggle-switch { position: relative; width: 48px; height: 26px; cursor: pointer; }
-  .toggle-switch input { opacity: 0; width: 0; height: 0; }
-  .toggle-track {
-    position: absolute; inset: 0; background: #3a3a3a; border-radius: 26px; transition: background 0.2s;
-  }
-  .toggle-track::before {
-    content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px;
-    background: #888; border-radius: 50%; transition: transform 0.2s, background 0.2s;
-  }
-  .toggle-switch input:checked + .toggle-track { background: rgba(0,201,177,0.2); border: 1px solid #00C9B1; }
-  .toggle-switch input:checked + .toggle-track::before { transform: translateX(22px); background: #00C9B1; }
- 
-  .auto-badge {
-    font-family: monospace; font-size: 10px; letter-spacing: 0.12em;
-    padding: 3px 8px; border-radius: 4px; margin-left: 8px;
-  }
-  .auto-badge.on  { background: rgba(0,201,177,0.1); color: #00C9B1; border: 1px solid rgba(0,201,177,0.3); }
-  .auto-badge.off { background: rgba(255,255,255,0.04); color: #aaa; border: 1px solid #444; }
- 
-  /* ── CONFIRM BAR ── */
-  #confirm-bar {
-    background: #071a18; border-bottom: 2px solid #00C9B1;
-    padding: 14px 16px; flex-shrink: 0; display: none;
-  }
-  #confirm-bar.show { display: block; animation: drop 0.2s ease; }
+
+  /* mobile section */
+  #mobile-section { display: none; flex-direction: column; flex-shrink: 0; }
+  #mobile-section.show { display: flex; }
+  #mobile-scan-btn { margin:10px 16px 6px; padding:16px; background:#00C9B1; color:#000; border:none; border-radius:12px; font-family:monospace; font-size:14px; font-weight:700; letter-spacing:0.12em; cursor:pointer; }
+  #mobile-scan-btn:disabled { background:#222; color:#666; border:1px solid #333; }
+
+  /* desktop section */
+  #desktop-section { display:none; flex-direction:column; flex-shrink:0; padding:12px 16px 10px; border-bottom:1px solid #333; gap:10px; }
+  #desktop-section.show { display:flex; }
+  #gun-input { width:100%; background:#1e1e1e; border:2px solid #00C9B1; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:16px; padding:13px 16px; outline:none; }
+  #gun-input::placeholder { color:#555; font-size:13px; }
+  #gun-input:disabled { border-color:#333; color:#555; background:#161616; }
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; }
+  .toggle-lbl { font-family:monospace; font-size:11px; color:#ccc; letter-spacing:0.08em; }
+  .toggle-switch { position:relative; width:48px; height:26px; cursor:pointer; flex-shrink:0; }
+  .toggle-switch input { opacity:0; width:0; height:0; }
+  .toggle-track { position:absolute; inset:0; background:#2a2a2a; border-radius:26px; transition:background 0.2s; }
+  .toggle-track::before { content:''; position:absolute; height:20px; width:20px; left:3px; bottom:3px; background:#666; border-radius:50%; transition:transform 0.2s,background 0.2s; }
+  .toggle-switch input:checked + .toggle-track { background:rgba(0,201,177,0.2); border:1px solid #00C9B1; }
+  .toggle-switch input:checked + .toggle-track::before { transform:translateX(22px); background:#00C9B1; }
+  .auto-badge { font-family:monospace; font-size:10px; padding:2px 8px; border-radius:4px; margin-left:8px; }
+  .auto-badge.on  { background:rgba(0,201,177,0.1); color:#00C9B1; border:1px solid rgba(0,201,177,0.3); }
+  .auto-badge.off { background:rgba(255,255,255,0.04); color:#777; border:1px solid #333; }
+
+  /* CONFIRM BAR */
+  #confirm-bar { background:#071a18; border-bottom:2px solid #00C9B1; padding:14px 16px; flex-shrink:0; display:none; }
+  #confirm-bar.show { display:block; animation:drop 0.2s ease; }
   @keyframes drop { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-  .confirm-label { font-family: monospace; font-size: 9px; letter-spacing: 0.2em; color: #00C9B1; margin-bottom: 6px; text-transform: uppercase; }
-  .confirm-code  { font-family: monospace; font-size: 22px; font-weight: 700; color: #f0f0ee; margin-bottom: 12px; word-break: break-all; }
-  .confirm-btns  { display: flex; gap: 10px; }
+  .c-label { font-family:monospace; font-size:9px; letter-spacing:0.2em; color:#00C9B1; margin-bottom:5px; text-transform:uppercase; }
+  .c-code  { font-family:monospace; font-size:22px; font-weight:700; color:#f0f0ee; margin-bottom:12px; word-break:break-all; }
+  .c-btns  { display:flex; gap:10px; }
   .btn-wrong { flex:1; background:none; border:1.5px solid #E63946; border-radius:10px; color:#E63946; font-family:monospace; font-size:13px; font-weight:700; padding:13px; cursor:pointer; }
   .btn-add   { flex:2; background:#00C9B1; border:none; border-radius:10px; color:#000; font-family:monospace; font-size:14px; font-weight:700; padding:13px; cursor:pointer; }
- 
-  /* ── STATS ── */
+
+  /* STATS */
   .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:10px 14px; flex-shrink:0; }
-  .stat-card { background:#1e1e1e; border:1px solid #444; border-radius:10px; padding:10px 8px; text-align:center; }
-  .stat-val { font-family:monospace; font-size:22px; font-weight:700; color:#00C9B1; line-height:1; }
-  .stat-lbl { font-family:monospace; font-size:8px; letter-spacing:0.14em; color:#aaa; text-transform:uppercase; margin-top:4px; }
- 
-  /* ── TALLY ── */
-  .tally-header { display:flex; align-items:center; justify-content:space-between; padding:6px 16px 4px; flex-shrink:0; }
-  .tally-title { font-family:monospace; font-size:9px; letter-spacing:0.2em; color:#aaa; text-transform:uppercase; }
-  .export-btn { font-family:monospace; font-size:9px; color:#00C9B1; background:none; border:1px solid rgba(0,201,177,0.3); border-radius:5px; padding:4px 8px; cursor:pointer; }
- 
+  .stat-card { background:#1e1e1e; border:1px solid #383838; border-radius:10px; padding:10px 8px; text-align:center; }
+  .stat-val  { font-family:monospace; font-size:22px; font-weight:700; color:#00C9B1; line-height:1; }
+  .stat-lbl  { font-family:monospace; font-size:8px; letter-spacing:0.14em; color:#888; text-transform:uppercase; margin-top:4px; }
+
+  /* TALLY */
+  .tally-hdr { display:flex; align-items:center; justify-content:space-between; padding:6px 16px 4px; flex-shrink:0; }
+  .tally-ttl { font-family:monospace; font-size:9px; letter-spacing:0.2em; color:#888; text-transform:uppercase; }
+  .export-btn { font-family:monospace; font-size:9px; color:#00C9B1; background:none; border:1px solid rgba(0,201,177,0.35); border-radius:5px; padding:4px 8px; cursor:pointer; }
+
   #tally-list { flex:1; overflow-y:auto; padding:4px 14px 10px; -webkit-overflow-scrolling:touch; }
   #tally-list::-webkit-scrollbar { display:none; }
-  .empty { text-align:center; padding:28px 0; color:#888; font-size:13px; line-height:1.8; }
+  .empty { text-align:center; padding:28px 0; color:#666; font-size:13px; line-height:1.8; }
   .empty span { font-size:24px; display:block; margin-bottom:8px; }
- 
-  .item { display:flex; align-items:center; gap:12px; padding:11px 14px; background:#1e1e1e; border:1px solid #444; border-radius:10px; margin-bottom:6px; animation:item-in 0.2s ease; }
+
+  .item { display:flex; align-items:center; gap:12px; padding:11px 14px; background:#1e1e1e; border:1px solid #383838; border-radius:10px; margin-bottom:6px; animation:item-in 0.2s ease; }
   @keyframes item-in { from{transform:translateX(8px);opacity:0} to{transform:translateX(0);opacity:1} }
   .item.bump { animation:bump 0.3s ease; }
   @keyframes bump { 0%{background:rgba(0,201,177,0.15)} 100%{background:#1e1e1e} }
-  .item-info { flex:1; min-width:0; }
-  .item-code { font-family:monospace; font-size:13px; color:#f0f0ee; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .item-name { font-size:11px; color:#aaa; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .item-scans { font-family:monospace; font-size:10px; color:#999; background:rgba(255,255,255,0.03); border-radius:4px; padding:2px 6px; flex-shrink:0; }
-  .item-qty { font-family:monospace; font-size:20px; font-weight:700; color:#00C9B1; min-width:32px; text-align:right; flex-shrink:0; }
-  .del-btn { color:#666; background:none; border:none; font-size:15px; cursor:pointer; padding:2px 4px; flex-shrink:0; }
+  .item-info  { flex:1; min-width:0; }
+  .item-code  { font-family:monospace; font-size:13px; color:#f0f0ee; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item-name  { font-size:11px; color:#aaa; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item-scans { font-family:monospace; font-size:10px; color:#888; background:rgba(255,255,255,0.04); border-radius:4px; padding:2px 6px; flex-shrink:0; }
+  .item-qty   { font-family:monospace; font-size:20px; font-weight:700; color:#00C9B1; min-width:32px; text-align:right; flex-shrink:0; }
+  .del-btn    { color:#555; background:none; border:none; font-size:15px; cursor:pointer; padding:2px 4px; flex-shrink:0; }
   .del-btn:active { color:#E63946; }
- 
-  /* SYNC STATUS */
-  .sync-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-  .sync-dot.pending { background:#888; }
+  .sync-dot   { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .sync-dot.pending { background:#555; }
   .sync-dot.sending { background:#FFA500; animation:blink 0.5s infinite; }
   .sync-dot.ok      { background:#00C9B1; }
   .sync-dot.fail    { background:#E63946; }
- 
-  /* ── MANUAL / BOTTOM ── */
-  .bottom-bar { display:flex; gap:8px; padding:8px 14px 16px; flex-shrink:0; border-top:1px solid #2a2a2a; }
+
+  /* MANUAL */
+  .bottom-bar { display:flex; gap:8px; padding:8px 14px 16px; flex-shrink:0; border-top:1px solid #333; }
   .manual-input { flex:1; background:#1e1e1e; border:1px solid #444; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:13px; padding:11px 14px; outline:none; -webkit-appearance:none; }
   .manual-input:focus { border-color:#00C9B1; }
-  .manual-input::placeholder { color:#666; font-size:12px; }
+  .manual-input::placeholder { color:#555; font-size:12px; }
   .add-btn { background:#1e1e1e; color:#00C9B1; border:1px solid #00C9B1; border-radius:10px; padding:11px 16px; font-family:monospace; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; }
- 
+
   /* EXPORT MODAL */
   .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; align-items:flex-end; justify-content:center; }
   .modal-bg.open { display:flex; }
-  .modal-sheet { background:#1e1e1e; border:1px solid #444; border-radius:20px 20px 0 0; padding:28px 24px 40px; width:100%; animation:sheet-up 0.3s cubic-bezier(0.4,0,0.2,1); }
+  .modal-sheet { background:#1a1a1a; border:1px solid #444; border-radius:20px 20px 0 0; padding:28px 24px 40px; width:100%; animation:sheet-up 0.3s cubic-bezier(0.4,0,0.2,1); max-width:500px; }
   @keyframes sheet-up { from{transform:translateY(100%)} to{transform:translateY(0)} }
   .modal-title { font-family:monospace; font-size:12px; letter-spacing:0.18em; color:#00C9B1; margin-bottom:16px; }
   .export-ta { width:100%; background:#0f0f0f; border:1px solid #444; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:12px; padding:14px; height:200px; resize:none; outline:none; line-height:1.7; }
-  .modal-actions { display:flex; gap:10px; margin-top:14px; }
+  .modal-acts { display:flex; gap:10px; margin-top:14px; }
   .modal-close { background:none; border:1px solid #444; border-radius:10px; color:#aaa; font-family:monospace; font-size:12px; padding:13px 18px; cursor:pointer; }
-  .modal-copy { flex:1; background:#00C9B1; border:none; border-radius:10px; color:#000; font-family:monospace; font-size:12px; font-weight:700; padding:13px; cursor:pointer; }
- 
+  .modal-copy  { flex:1; background:#00C9B1; border:none; border-radius:10px; color:#000; font-family:monospace; font-size:12px; font-weight:700; padding:13px; cursor:pointer; }
+
   /* TOAST */
-  #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(50px); background:#1e1e1e; border:1px solid #00C9B1; border-radius:8px; padding:10px 18px; font-family:monospace; font-size:11px; color:#00C9B1; z-index:200; transition:transform 0.25s ease; white-space:nowrap; }
+  #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(50px); background:#1e1e1e; border:1px solid #00C9B1; border-radius:8px; padding:10px 18px; font-family:monospace; font-size:11px; color:#00C9B1; z-index:200; transition:transform 0.25s ease; white-space:nowrap; max-width:90vw; text-overflow:ellipsis; overflow:hidden; }
   #toast.show { transform:translateX(-50%) translateY(0); }
   #toast.err  { border-color:#E63946; color:#E63946; }
   #toast.warn { border-color:#FFA500; color:#FFA500; }
 </style>
 </head>
 <body>
- 
+
 <!-- ══ SETUP SCREEN ══ -->
-<div id="setup-screen">
+<div id="setup-screen" class="screen">
   <div class="setup-logo">PRFM</div>
   <div class="setup-title">Scanner Setup</div>
-  <div class="setup-sub">One-time setup on this device.<br>Your credentials are saved locally and never shared.</div>
- 
-  <div class="setup-field">
-    <label class="setup-label">Google Apps Script URL</label>
-    <input class="setup-input" id="setup-url" type="url" inputmode="url"
-      placeholder="https://script.google.com/macros/s/..." autocomplete="off" autocapitalize="none" />
+  <div class="setup-sub">One-time setup on this device.<br>Saved locally, never shared.</div>
+  <div class="field">
+    <label>Google Apps Script URL</label>
+    <input id="s-url" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/..." autocomplete="off" autocapitalize="none"/>
   </div>
- 
-  <div class="setup-field">
-    <label class="setup-label">Access Key</label>
-    <input class="setup-input" id="setup-key" type="password"
-      placeholder="Your secret key" autocomplete="off" />
+  <div class="field">
+    <label>Access Key</label>
+    <input id="s-key" type="password" placeholder="Your secret key" autocomplete="off"/>
   </div>
- 
-  <button class="setup-save-btn" onclick="saveSetup()">SAVE &amp; START SCANNING →</button>
-  <div class="setup-note">Saved on this device only. You won't be asked again.<br>To reset: tap ⚙ Settings in the app.</div>
+  <button class="btn-teal" onclick="saveSetup()">SAVE &amp; CONTINUE →</button>
+  <p class="setup-note">Saved on this device only. Tap ⚙ in the app to update.</p>
 </div>
- 
+
+<!-- ══ BATCH SCREEN ══ -->
+<div id="batch-screen" class="screen">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
+    <div class="batch-logo">PRFM · SCANNER</div>
+    <div class="batch-title" id="bs-title">New Batch</div>
+    <div class="batch-sub" id="bs-sub">Enter supplier and PO details to begin.</div>
+
+    <div class="field" style="width:100%">
+      <label>Supplier Short Name</label>
+      <input id="b-supplier" type="text" placeholder="HGS" autocomplete="off" autocapitalize="characters"/>
+    </div>
+    <div class="field" style="width:100%">
+      <label>PO Number</label>
+      <input id="b-po" type="text" placeholder="PO-001" autocomplete="off" autocapitalize="characters"/>
+    </div>
+    <button class="btn-teal" onclick="createBatch()">START BATCH →</button>
+    <button class="btn-outline" onclick="showSetup()">⚙ Settings</button>
+  </div>
+</div>
+
 <!-- ══ MAIN APP ══ -->
-<div id="app">
- 
-  <div id="topbar">
+<div id="app-screen" class="screen">
+
+  <div class="topbar">
     <div class="topbar-left">
       <div class="brand">PRFM · SCANNER</div>
-      <div class="mode-badge" id="mode-badge">DETECTING…</div>
+      <div class="batch-tag" id="batch-tag">—</div>
     </div>
     <div class="topbar-right">
-      <button class="icon-btn" onclick="clearAll()">CLEAR</button>
-      <button class="icon-btn" onclick="showSetup()">⚙</button>
+      <button class="tb-btn" onclick="showExport()">EXPORT</button>
+      <button class="tb-btn danger" id="close-batch-btn" onclick="confirmCloseBatch()">CLOSE BATCH</button>
+      <button class="tb-btn" onclick="showSetup()">⚙</button>
     </div>
   </div>
- 
-  <div id="status"><div class="dot off" id="status-dot"></div><span id="status-text">Initialising…</span></div>
- 
-  <!-- MOBILE CAMERA SECTION -->
+
+  <div id="status-bar"><div class="s-dot off" id="s-dot"></div><span id="s-text">Initialising…</span></div>
+
+  <div id="closed-banner">
+    <div class="closed-title">🔒 BATCH CLOSED</div>
+    <div class="closed-sub">This batch is locked. Tap NEW BATCH to start scanning again.</div>
+    <button class="btn-teal" style="margin-top:12px;max-width:260px" onclick="goNewBatch()">NEW BATCH →</button>
+  </div>
+
+  <!-- MOBILE CAMERA -->
   <div id="mobile-section">
     <div id="cam-wrap">
       <div id="cam-idle">
-        <div style="font-size:13px;color:#aaa">Tap to start camera</div>
+        <div style="font-size:13px;color:#888">Tap to start camera</div>
         <button class="start-cam-btn" onclick="startCamera()">START CAMERA</button>
       </div>
       <video id="video" playsinline autoplay muted></video>
-      <div class="mask-top"></div><div class="mask-bottom"></div>
-      <div class="mask-left"></div><div class="mask-right"></div>
+      <div class="mask-t"></div><div class="mask-b"></div>
+      <div class="mask-l"></div><div class="mask-r"></div>
       <div class="frame-box"><div class="frame-inner"><div class="c1"></div><div class="c2"></div><div class="scan-line"></div></div></div>
       <div id="flash"></div>
     </div>
     <button id="mobile-scan-btn" onclick="captureAndDecode()" disabled>START CAMERA FIRST</button>
   </div>
- 
-  <!-- DESKTOP GUN SECTION -->
+
+  <!-- DESKTOP GUN -->
   <div id="desktop-section">
-    <div class="gun-row">
-      <input id="gun-input" type="text" inputmode="numeric"
-        placeholder="⌨ Ready — scan with gun or type barcode…"
-        autocomplete="off" autocapitalize="none" autofocus />
-    </div>
+    <input id="gun-input" type="text" inputmode="numeric" placeholder="⌨ Ready — scan with USB gun or type barcode…" autocomplete="off" autocapitalize="none"/>
     <div class="toggle-row">
-      <div class="toggle-label">
-        Auto-add on scan
-        <span class="auto-badge off" id="auto-badge">CONFIRM MODE</span>
-      </div>
+      <div class="toggle-lbl">Auto-add on scan <span class="auto-badge off" id="auto-badge">CONFIRM MODE</span></div>
       <label class="toggle-switch">
-        <input type="checkbox" id="auto-toggle" onchange="toggleAutoAdd()" />
+        <input type="checkbox" id="auto-toggle" onchange="toggleAutoAdd()"/>
         <div class="toggle-track"></div>
       </label>
     </div>
   </div>
- 
+
   <!-- CONFIRM BAR -->
   <div id="confirm-bar">
-    <div class="confirm-label">▦ Confirm barcode</div>
-    <div class="confirm-code" id="confirm-code">—</div>
-    <div class="confirm-btns">
+    <div class="c-label">▦ Confirm barcode</div>
+    <div class="c-code" id="c-code">—</div>
+    <div class="c-btns">
       <button class="btn-wrong" onclick="rejectScan()">✕ WRONG</button>
       <button class="btn-add"   onclick="confirmScan()">✓ ADD</button>
     </div>
   </div>
- 
+
   <!-- STATS -->
   <div class="stats-row">
-    <div class="stat-card"><div class="stat-val" id="s-confirmed">0</div><div class="stat-lbl">Confirmed</div></div>
-    <div class="stat-card"><div class="stat-val" id="s-skus">0</div><div class="stat-lbl">SKUs</div></div>
-    <div class="stat-card"><div class="stat-val" id="s-units">0</div><div class="stat-lbl">Units</div></div>
+    <div class="stat-card"><div class="stat-val" id="st-confirmed">0</div><div class="stat-lbl">Confirmed</div></div>
+    <div class="stat-card"><div class="stat-val" id="st-skus">0</div><div class="stat-lbl">SKUs</div></div>
+    <div class="stat-card"><div class="stat-val" id="st-units">0</div><div class="stat-lbl">Units</div></div>
   </div>
- 
-  <div class="tally-header">
-    <div class="tally-title">Tally <span id="sheet-status" style="color:#aaa;font-size:8px;margin-left:4px;"></span></div>
-    <button class="export-btn" onclick="openExport()">EXPORT ↗</button>
+
+  <div class="tally-hdr">
+    <div class="tally-ttl">Session Tally <span id="sheet-live" style="color:#555;font-size:8px;margin-left:4px"></span></div>
   </div>
- 
+
   <div id="tally-list"><div class="empty"><span>▦</span>No barcodes confirmed yet.</div></div>
- 
+
   <div class="bottom-bar">
-    <input class="manual-input" id="manual-input" type="text" inputmode="numeric"
-      placeholder="Type barcode manually…" autocomplete="off" autocapitalize="none"/>
+    <input class="manual-input" id="manual-input" type="text" inputmode="numeric" placeholder="Type barcode manually…" autocomplete="off" autocapitalize="none"/>
     <button class="add-btn" onclick="manualAdd()">ADD</button>
   </div>
- 
+
 </div>
- 
+
 <!-- EXPORT MODAL -->
 <div class="modal-bg" id="export-modal">
   <div class="modal-sheet">
     <div class="modal-title">EXPORT · SESSION TALLY</div>
     <textarea class="export-ta" id="export-text" readonly></textarea>
-    <div class="modal-actions">
+    <div class="modal-acts">
       <button class="modal-close" onclick="closeExport()">CLOSE</button>
       <button class="modal-copy"  onclick="copyExport()">COPY</button>
     </div>
   </div>
 </div>
- 
+
 <div id="toast"></div>
- 
+
+<!-- ZXing for iOS/Safari fallback -->
 <script>
 // ─────────────────────────────────────────
-//  CONFIG — loaded from localStorage
+//  PRODUCT NAMES
 // ─────────────────────────────────────────
-let SCRIPT_URL = '';
-let SECRET_KEY = '';
- 
 const PRODUCT_NAMES = {
   '8881400030000': 'Marathon · S',
   '8881400030017': 'Marathon · M',
@@ -362,152 +328,247 @@ const PRODUCT_NAMES = {
   '8881400030109': 'Cycling · L',
   '8881400030116': 'Cycling · XL',
 };
- 
+
 // ─────────────────────────────────────────
 //  STATE
 // ─────────────────────────────────────────
-const tally = {};
+let SCRIPT_URL  = '';
+let SECRET_KEY  = '';
+let currentBatch = null;   // { batchId, supplier, po, status }
+let isMobile    = false;
+let autoAdd     = false;
+let audioCtx    = null;
+let detector    = null;
+let cameraStarted = false;
+let scanBusy    = false;
+let pendingCode = null;
+const tally     = {};
 let totalConfirmed = 0;
-let pendingCode    = null;
-let isMobile       = false;
-let autoAdd        = false;
-let audioCtx       = null;
-let detector       = null;
-let cameraStarted  = false;
-let scanBusy       = false;
-let sessionId      = getTodaySession();
- 
+let zxingReader = null;
+
 // ─────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────
-window.addEventListener('load', () => {
-  SCRIPT_URL = localStorage.getItem('prfm_url')  || '';
-  SECRET_KEY = localStorage.getItem('prfm_key')  || '';
- 
+window.addEventListener('load', async () => {
+  SCRIPT_URL = localStorage.getItem('prfm_url') || '';
+  SECRET_KEY = localStorage.getItem('prfm_key') || '';
+
   if (!SCRIPT_URL || !SECRET_KEY) {
-    document.getElementById('setup-screen').style.display = 'flex';
-    document.getElementById('app').classList.remove('show');
-  } else {
-    launchApp();
+    showScreen('setup-screen'); return;
   }
+
+  // Check batch status from sheet
+  setStatus('Checking batch status…', true);
+  showScreen('app-screen');
+  detectMode();
+  await checkBatchStatus();
 });
- 
-function launchApp() {
-  document.getElementById('setup-screen').style.display = 'none';
-  document.getElementById('app').classList.add('show');
- 
-  // Detect mobile vs desktop
+
+// Re-check when app comes back to foreground
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && currentBatch) checkBatchStatus();
+});
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
+  document.getElementById(id).classList.add('show');
+}
+
+function detectMode() {
   isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
- 
-  const badge = document.getElementById('mode-badge');
   if (isMobile) {
     document.getElementById('mobile-section').classList.add('show');
-    badge.textContent = 'MOBILE';
-    badge.classList.add('mobile');
-    setStatus('Tap START CAMERA to begin', false);
   } else {
     document.getElementById('desktop-section').classList.add('show');
-    badge.textContent = 'DESKTOP · GUN';
-    badge.classList.add('desktop');
-    setStatus('Ready — scan with USB gun', false);
-    // Focus gun input
-    setTimeout(() => document.getElementById('gun-input').focus(), 100);
+    setTimeout(() => document.getElementById('gun-input').focus(), 200);
   }
 }
- 
+
 // ─────────────────────────────────────────
-//  SETUP SCREEN
+//  SETUP
 // ─────────────────────────────────────────
 function saveSetup() {
-  const url = document.getElementById('setup-url').value.trim();
-  const key = document.getElementById('setup-key').value.trim();
- 
-  if (!url || !key) { toast('Enter both URL and access key', true); return; }
-  if (!url.startsWith('https://script.google.com')) { toast('URL looks wrong — check it', true); return; }
- 
+  const url = document.getElementById('s-url').value.trim();
+  const key = document.getElementById('s-key').value.trim();
+  if (!url || !key) { toast('Enter both URL and key', true); return; }
+  if (!url.startsWith('https://script.google.com')) { toast('URL looks wrong', true); return; }
   localStorage.setItem('prfm_url', url);
   localStorage.setItem('prfm_key', key);
-  SCRIPT_URL = url;
-  SECRET_KEY = key;
- 
-  launchApp();
+  SCRIPT_URL = url; SECRET_KEY = key;
+  showScreen('app-screen');
+  detectMode();
+  checkBatchStatus();
 }
- 
+
 function showSetup() {
-  document.getElementById('setup-url').value = SCRIPT_URL;
-  document.getElementById('setup-key').value = SECRET_KEY;
-  document.getElementById('setup-screen').style.display = 'flex';
-  document.getElementById('app').classList.remove('show');
+  document.getElementById('s-url').value = SCRIPT_URL;
+  document.getElementById('s-key').value = SECRET_KEY;
+  showScreen('setup-screen');
 }
- 
+
+// ─────────────────────────────────────────
+//  BATCH STATUS CHECK — called on every load
+// ─────────────────────────────────────────
+async function checkBatchStatus() {
+  setStatus('Checking batch…', true);
+  try {
+    const res  = await callScript({ action: 'getBatchStatus' });
+    const data = await res.json();
+
+    if (!data.ok) { setStatus('Error: ' + data.error, false); return; }
+
+    if (data.status === 'NONE') {
+      // No batch exists — go to batch screen
+      currentBatch = null;
+      showScreen('batch-screen');
+      document.getElementById('bs-title').textContent = 'Start First Batch';
+      document.getElementById('bs-sub').textContent   = 'No batch found. Create one to begin scanning.';
+      return;
+    }
+
+    currentBatch = { batchId: data.batchId, supplier: data.supplier, po: data.po, status: data.status };
+    showScreen('app-screen');
+    updateBatchUI();
+
+  } catch(e) {
+    setStatus('Could not reach sheet: ' + e.message, false);
+  }
+}
+
+function updateBatchUI() {
+  if (!currentBatch) return;
+  const tag = document.getElementById('batch-tag');
+
+  if (currentBatch.status === 'OPEN') {
+    tag.innerHTML = `<span class="open-dot">●</span> ${currentBatch.batchId} · OPEN`;
+    document.getElementById('closed-banner').classList.remove('show');
+    document.getElementById('close-batch-btn').style.display = '';
+    enableScanning(true);
+    setStatus('Ready to scan · ' + currentBatch.batchId, false);
+  } else {
+    tag.innerHTML = `<span class="closed-dot">🔒</span> ${currentBatch.batchId} · CLOSED`;
+    document.getElementById('closed-banner').classList.add('show');
+    document.getElementById('close-batch-btn').style.display = 'none';
+    enableScanning(false);
+    setStatus('Batch is closed — start a new batch to scan', false);
+  }
+}
+
+function enableScanning(enabled) {
+  const mBtn = document.getElementById('mobile-scan-btn');
+  const gInput = document.getElementById('gun-input');
+  if (mBtn)   { mBtn.disabled = !enabled || !cameraStarted; if(enabled && cameraStarted) mBtn.textContent = '▦  TAP TO SCAN'; }
+  if (gInput) { gInput.disabled = !enabled; }
+  document.getElementById('manual-input').disabled = !enabled;
+  document.querySelector('.add-btn').disabled = !enabled;
+}
+
+// ─────────────────────────────────────────
+//  BATCH CREATION
+// ─────────────────────────────────────────
+function goNewBatch() {
+  document.getElementById('b-supplier').value = 'HGS';
+  document.getElementById('b-po').value = '';
+  document.getElementById('bs-title').textContent = 'New Batch';
+  document.getElementById('bs-sub').textContent   = 'Enter details for the new delivery.';
+  showScreen('batch-screen');
+}
+
+async function createBatch() {
+  const supplier = document.getElementById('b-supplier').value.trim().toUpperCase() || 'HGS';
+  const po       = document.getElementById('b-po').value.trim().toUpperCase();
+  if (!po) { toast('Enter a PO number', true); return; }
+
+  setStatus('Creating batch…', true);
+  try {
+    const res  = await callScript({ action: 'createBatch', supplier, po });
+    const data = await res.json();
+    if (!data.ok) { toast(data.error, true); return; }
+
+    currentBatch = { batchId: data.batchId, supplier, po, status: 'OPEN' };
+    showScreen('app-screen');
+    detectMode();
+    updateBatchUI();
+    toast('Batch created: ' + data.batchId);
+
+  } catch(e) {
+    toast('Error: ' + e.message, true);
+  }
+}
+
+// ─────────────────────────────────────────
+//  CLOSE BATCH
+// ─────────────────────────────────────────
+async function confirmCloseBatch() {
+  if (!currentBatch || currentBatch.status !== 'OPEN') return;
+  if (!confirm('Close batch ' + currentBatch.batchId + '?\n\nScanning will be disabled. You can still sync to Shopify from the Google Sheet.')) return;
+
+  setStatus('Closing batch…', true);
+  try {
+    const res  = await callScript({ action: 'closeBatch', batchId: currentBatch.batchId });
+    const data = await res.json();
+    if (!data.ok) { toast(data.error, true); return; }
+
+    currentBatch.status = 'CLOSED';
+    updateBatchUI();
+    toast('Batch closed · Sync from Google Sheet when ready');
+
+  } catch(e) {
+    toast('Error: ' + e.message, true);
+  }
+}
+
 // ─────────────────────────────────────────
 //  PRFM FILTER
 // ─────────────────────────────────────────
 function isPRFM(code) {
   return typeof code === 'string' && code.startsWith('8881400');
 }
- 
+
 // ─────────────────────────────────────────
-//  DESKTOP — USB GUN INPUT
+//  DESKTOP GUN
 // ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const gunInput = document.getElementById('gun-input');
- 
-  gunInput.addEventListener('keydown', (e) => {
+  const gun = document.getElementById('gun-input');
+  gun.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
       initAudio();
-      const code = gunInput.value.trim();
-      gunInput.value = '';
-      if (!code) return;
-      handleScannedCode(code, 'gun');
+      const code = gun.value.trim();
+      gun.value = '';
+      if (code) handleCode(code, 'gun');
     }
   });
- 
-  // Re-focus gun input when clicking anywhere on desktop
-  document.addEventListener('click', (e) => {
+  document.addEventListener('click', e => {
     if (!isMobile && !e.target.closest('button') && !e.target.closest('input') && !e.target.closest('.modal-bg')) {
-      gunInput.focus();
+      gun.focus();
     }
   });
- 
   document.getElementById('manual-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') manualAdd();
   });
- 
-  // Confirm with Enter key on desktop
-  document.addEventListener('keydown', (e) => {
+  document.addEventListener('keydown', e => {
     if (e.key === 'Enter' && pendingCode && document.getElementById('confirm-bar').classList.contains('show')) {
-      e.preventDefault();
-      confirmScan();
+      e.preventDefault(); confirmScan();
     }
-    if (e.key === 'Escape' && pendingCode) {
-      rejectScan();
-    }
+    if (e.key === 'Escape' && pendingCode) rejectScan();
   });
 });
- 
+
 function toggleAutoAdd() {
   autoAdd = document.getElementById('auto-toggle').checked;
   const badge = document.getElementById('auto-badge');
-  if (autoAdd) {
-    badge.textContent = 'AUTO-ADD';
-    badge.className = 'auto-badge on';
-    setStatus('Auto-add ON — scans commit instantly', false);
-  } else {
-    badge.textContent = 'CONFIRM MODE';
-    badge.className = 'auto-badge off';
-    setStatus('Confirm mode — review each scan', false);
-  }
+  badge.textContent = autoAdd ? 'AUTO-ADD' : 'CONFIRM MODE';
+  badge.className   = 'auto-badge ' + (autoAdd ? 'on' : 'off');
   document.getElementById('gun-input').focus();
 }
- 
+
 // ─────────────────────────────────────────
-//  MOBILE — CAMERA
+//  CAMERA (MOBILE)
 // ─────────────────────────────────────────
 async function startCamera() {
   document.getElementById('cam-idle').style.display = 'none';
   setStatus('Starting camera…', true);
- 
+
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -515,86 +576,132 @@ async function startCamera() {
     const video = document.getElementById('video');
     video.srcObject = stream;
     await video.play();
- 
+
+    // Try native BarcodeDetector first (Android Chrome)
     if ('BarcodeDetector' in window) {
       detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','upc_a','upc_e'] });
-      setStatus('Camera ready · Tap to scan', false);
+      setStatus('Camera ready — tap to scan', false);
     } else {
-      setStatus('Camera ready · BarcodeDetector not supported — use manual input', false);
+      // Load ZXing for iOS/Safari
+      setStatus('Loading barcode library…', true);
+      await loadZXing();
+      setStatus('Camera ready — tap to scan', false);
     }
- 
+
     cameraStarted = true;
     const btn = document.getElementById('mobile-scan-btn');
-    btn.disabled = false;
-    btn.textContent = '▦  TAP TO SCAN';
- 
+    if (currentBatch && currentBatch.status === 'OPEN') {
+      btn.disabled = false;
+      btn.textContent = '▦  TAP TO SCAN';
+    }
+
   } catch(e) {
-    setStatus('Camera error: ' + e.message, false);
     document.getElementById('cam-idle').style.display = 'flex';
+    setStatus('Camera error: ' + e.message, false);
   }
 }
- 
+
+function loadZXing() {
+  return new Promise((resolve, reject) => {
+    if (window.ZXing) { setupZXing(); resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing/0.19.1/zxing.min.js';
+    s.onload = () => { setupZXing(); resolve(); };
+    s.onerror = () => { setStatus('Library failed — use manual input', false); resolve(); };
+    document.head.appendChild(s);
+  });
+}
+
+function setupZXing() {
+  if (!window.ZXing) return;
+  const hints = new Map();
+  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
+    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.UPC_A,
+  ]);
+  zxingReader = new ZXing.BrowserMultiFormatReader(hints);
+}
+
 async function captureAndDecode() {
   if (scanBusy || !cameraStarted) return;
+  if (!currentBatch || currentBatch.status !== 'OPEN') {
+    toast('Batch is closed', true); return;
+  }
   scanBusy = true;
   initAudio();
- 
+
   const btn   = document.getElementById('mobile-scan-btn');
   const video = document.getElementById('video');
-  btn.disabled = true;
-  btn.textContent = 'READING…';
- 
+  btn.disabled = true; btn.textContent = 'READING…';
+
   // Flash
   const fl = document.getElementById('flash');
-  fl.style.opacity = '0.4';
+  fl.style.opacity = '0.45';
   setTimeout(() => fl.style.opacity = '0', 120);
- 
+
+  // Snap to canvas
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 720;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+
+  // Crop centre
+  const cw = Math.round(canvas.width * 0.7);
+  const ch = Math.round(canvas.height * 0.55);
+  const cx = Math.round((canvas.width  - cw) / 2);
+  const cy = Math.round((canvas.height - ch) / 2);
+  const crop = document.createElement('canvas');
+  crop.width = cw; crop.height = ch;
+  crop.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
+
   let found = null;
   try {
     if (detector) {
-      const results = await detector.detect(video);
-      if (results.length > 0) found = results[0].rawValue;
+      const results = await detector.detect(crop);
+      if (results.length) found = results[0].rawValue;
+    } else if (zxingReader) {
+      const result = await zxingReader.decodeFromCanvas(crop);
+      if (result) found = result.getText();
     }
   } catch(e) { found = null; }
- 
+
   if (found) {
-    handleScannedCode(found, 'camera');
+    handleCode(found, 'camera');
   } else {
     setStatus('Nothing detected — hold closer and try again', false);
     if (navigator.vibrate) navigator.vibrate(200);
   }
- 
-  btn.disabled = false;
-  btn.textContent = '▦  TAP TO SCAN';
+
+  btn.disabled = false; btn.textContent = '▦  TAP TO SCAN';
   scanBusy = false;
 }
- 
+
 // ─────────────────────────────────────────
-//  HANDLE SCANNED CODE (both modes)
+//  HANDLE CODE
 // ─────────────────────────────────────────
-function handleScannedCode(code, source) {
+function handleCode(code, source) {
+  if (!currentBatch || currentBatch.status !== 'OPEN') {
+    toast('Batch is closed — start a new batch', true); return;
+  }
   if (!isPRFM(code)) {
     setStatus('Not a PRFM barcode: ' + code, false);
     if (navigator.vibrate) navigator.vibrate(200);
     if (!isMobile) document.getElementById('gun-input').focus();
     return;
   }
- 
-  // Desktop auto-add mode — skip confirm
   if (source === 'gun' && autoAdd) {
     recordBarcode(code);
-    if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+    if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 50);
     return;
   }
- 
   // Confirm mode
   pendingCode = code;
-  document.getElementById('confirm-code').textContent = code;
+  document.getElementById('c-code').textContent = code;
   document.getElementById('confirm-bar').classList.add('show');
   setStatus('Confirm or reject ↓', true);
   if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
 }
- 
+
 // ─────────────────────────────────────────
 //  CONFIRM / REJECT
 // ─────────────────────────────────────────
@@ -604,115 +711,97 @@ function confirmScan() {
   recordBarcode(pendingCode);
   pendingCode = null;
   document.getElementById('confirm-bar').classList.remove('show');
-  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 50);
 }
- 
+
 function rejectScan() {
   pendingCode = null;
   document.getElementById('confirm-bar').classList.remove('show');
   setStatus('Rejected — scan again', false);
   toast('Rejected', true);
-  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 50);
 }
- 
+
 // ─────────────────────────────────────────
-//  RECORD + SEND TO SHEET
+//  RECORD + SEND
 // ─────────────────────────────────────────
 function recordBarcode(code) {
   const isNew = !tally[code];
-  if (tally[code]) { tally[code].qty++; tally[code].scans++; tally[code].synced = 'pending'; }
+  if (tally[code]) { tally[code].qty++; tally[code].scans++; }
   else { tally[code] = { qty: 1, scans: 1, synced: 'pending' }; }
   totalConfirmed++;
- 
   beep();
   if (navigator.vibrate) navigator.vibrate(60);
- 
   updateStats();
-  updateTallyList(code, isNew);
-  setStatus('✓ Added: ' + code + ' (' + (PRODUCT_NAMES[code] || 'Unknown') + ')', false);
- 
-  // Send to Google Sheet
+  updateTallyUI(code, isNew);
+  setStatus('✓ Added: ' + code + ' — ' + (PRODUCT_NAMES[code] || 'Unknown'), false);
   sendToSheet(code, 1);
 }
- 
+
 async function sendToSheet(barcode, qty) {
-  if (!SCRIPT_URL || !SECRET_KEY) return;
- 
+  if (!SCRIPT_URL || !SECRET_KEY || !currentBatch) return;
   updateSyncDot(barcode, 'sending');
-  setStatus('Sending to sheet…', true);
- 
   try {
     const payload = JSON.stringify({
+      action:  'addScan',
       secret:  SECRET_KEY,
       barcode: barcode,
       qty:     qty,
-      session: sessionId
+      batchId: currentBatch.batchId
     });
- 
     const res = await fetch(SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain' },
       body: payload,
       redirect: 'follow'
     });
- 
     const raw = await res.text();
-    setStatus('Raw response: ' + raw.substring(0, 80), false);
- 
     let data;
-    try { data = JSON.parse(raw); }
-    catch(pe) {
-      updateSyncDot(barcode, 'fail');
-      setStatus('Parse error: ' + raw.substring(0, 100), false);
-      toast('Parse error — see status bar', true);
-      return;
-    }
- 
+    try { data = JSON.parse(raw); } catch(e) { throw new Error('Bad response: ' + raw.substring(0,80)); }
+
     if (data.ok) {
       updateSyncDot(barcode, 'ok');
-      setStatus('✓ Sheet updated: ' + (data.product || barcode), false);
-      document.getElementById('sheet-status').textContent = '● sheet live';
-      document.getElementById('sheet-status').style.color = '#00C9B1';
+      document.getElementById('sheet-live').textContent = '● live';
+      document.getElementById('sheet-live').style.color = '#00C9B1';
+    } else if (data.error === 'BATCH_CLOSED') {
+      // Batch was closed from another device
+      currentBatch.status = 'CLOSED';
+      updateBatchUI();
+      toast('Batch was closed on another device', true);
+      updateSyncDot(barcode, 'fail');
     } else {
       updateSyncDot(barcode, 'fail');
-      setStatus('Sheet error: ' + (data.error || 'unknown'), false);
-      toast('Sheet error: ' + (data.error || 'unknown'), true);
+      setStatus('Sheet error: ' + data.error, false);
     }
   } catch(e) {
     updateSyncDot(barcode, 'fail');
-    setStatus('Network error: ' + e.message, false);
-    toast('Network error: ' + e.message, true);
+    setStatus('Sync failed: ' + e.message, false);
+    toast('Saved locally — sheet sync failed', 'warn');
   }
 }
- 
+
 function updateSyncDot(code, state) {
   if (tally[code]) tally[code].synced = state;
-  const id = 'item_' + code;
-  const el = document.getElementById(id);
-  if (el) {
-    const dot = el.querySelector('.sync-dot');
-    if (dot) dot.className = 'sync-dot ' + state;
-  }
+  const el = document.getElementById('item_' + code);
+  if (el) { const d = el.querySelector('.sync-dot'); if (d) d.className = 'sync-dot ' + state; }
 }
- 
+
 // ─────────────────────────────────────────
 //  TALLY UI
 // ─────────────────────────────────────────
 function updateStats() {
   const barcodes = Object.keys(tally);
   const units    = barcodes.reduce((s,b) => s + tally[b].qty, 0);
-  document.getElementById('s-confirmed').textContent = totalConfirmed;
-  document.getElementById('s-skus').textContent      = barcodes.length;
-  document.getElementById('s-units').textContent     = units;
+  document.getElementById('st-confirmed').textContent = totalConfirmed;
+  document.getElementById('st-skus').textContent      = barcodes.length;
+  document.getElementById('st-units').textContent     = units;
 }
- 
-function updateTallyList(code, isNew) {
+
+function updateTallyUI(code, isNew) {
   const list  = document.getElementById('tally-list');
   const empty = list.querySelector('.empty');
   if (empty) empty.remove();
- 
   const id = 'item_' + code;
- 
   if (isNew) {
     const div = document.createElement('div');
     div.className = 'item'; div.id = id;
@@ -720,140 +809,118 @@ function updateTallyList(code, isNew) {
     list.insertBefore(div, list.firstChild);
   } else {
     const el = document.getElementById(id);
-    if (el) {
-      el.innerHTML = itemHTML(code);
-      el.classList.remove('bump');
-      void el.offsetWidth;
-      el.classList.add('bump');
-    }
+    if (el) { el.innerHTML = itemHTML(code); el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
   }
 }
- 
+
 function itemHTML(code) {
-  const item = tally[code] || { qty:1, scans:1, synced:'pending' };
-  const name = PRODUCT_NAMES[code] || '—';
+  const item = tally[code];
   return `
     <div class="item-info">
       <div class="item-code">${code}</div>
-      <div class="item-name">${name}</div>
+      <div class="item-name">${PRODUCT_NAMES[code] || '—'}</div>
     </div>
     <div class="sync-dot ${item.synced || 'pending'}"></div>
     <div class="item-scans">${item.scans}×</div>
     <div class="item-qty">${item.qty}</div>
     <button class="del-btn" onclick="removeItem('${code}')">✕</button>`;
 }
- 
+
 function removeItem(code) {
   delete tally[code];
   const el = document.getElementById('item_' + code);
   if (el) el.remove();
   updateStats();
-  if (!Object.keys(tally).length) {
+  if (!Object.keys(tally).length)
     document.getElementById('tally-list').innerHTML = '<div class="empty"><span>▦</span>No barcodes confirmed yet.</div>';
-  }
 }
- 
-function clearAll() {
-  if (!Object.keys(tally).length) return;
-  if (!confirm('Clear all confirmed barcodes?')) return;
-  Object.keys(tally).forEach(k => delete tally[k]);
-  totalConfirmed = 0;
-  document.getElementById('tally-list').innerHTML = '<div class="empty"><span>▦</span>No barcodes confirmed yet.</div>';
-  document.getElementById('confirm-bar').classList.remove('show');
-  pendingCode = null;
-  updateStats();
-  setStatus('Cleared — ready for new session', false);
-  if (!isMobile) document.getElementById('gun-input').focus();
-}
- 
+
 // ─────────────────────────────────────────
-//  MANUAL INPUT
+//  MANUAL
 // ─────────────────────────────────────────
 function manualAdd() {
   const inp  = document.getElementById('manual-input');
   const code = inp.value.trim();
   if (!code) return;
   if (!isPRFM(code)) { toast('Must start with 8881400', true); return; }
-  initAudio();
-  recordBarcode(code);
-  inp.value = '';
-  inp.blur();
-  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 100);
+  initAudio(); handleCode(code, 'manual');
+  inp.value = ''; inp.blur();
 }
- 
+
 // ─────────────────────────────────────────
 //  AUDIO
 // ─────────────────────────────────────────
 function initAudio() {
   if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const buf = audioCtx.createBuffer(1, 1, 22050);
-  const src = audioCtx.createBufferSource();
-  src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const buf = audioCtx.createBuffer(1, 1, 22050);
+    const src = audioCtx.createBufferSource();
+    src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
+  } catch(e) {}
 }
- 
+
 function beep() {
   if (!audioCtx) return;
-  const osc  = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain); gain.connect(audioCtx.destination);
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(1480, audioCtx.currentTime);
-  gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.18);
+  try {
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1480, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.18);
+  } catch(e) {}
 }
- 
-// ─────────────────────────────────────────
-//  STATUS BAR
-// ─────────────────────────────────────────
-function setStatus(msg, active) {
-  document.getElementById('status-text').textContent = msg;
-  const dot = document.getElementById('status-dot');
-  dot.className = 'dot ' + (active ? '' : 'off');
-}
- 
+
 // ─────────────────────────────────────────
 //  EXPORT
 // ─────────────────────────────────────────
-function openExport() {
+function showExport() {
   const barcodes = Object.keys(tally);
   if (!barcodes.length) { toast('Nothing to export yet', true); return; }
   const now = new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' });
-  let text = `PRFM INVENTORY SCAN\n${now}\nSession: ${sessionId}\n${'─'.repeat(38)}\n`;
-  text += `BARCODE          PRODUCT              QTY\n${'─'.repeat(38)}\n`;
+  const batch = currentBatch ? currentBatch.batchId : '—';
+  let text = `PRFM INVENTORY SCAN\n${now}\nBatch: ${batch}\n${'─'.repeat(40)}\n`;
+  text += `BARCODE          PRODUCT               QTY\n${'─'.repeat(40)}\n`;
   barcodes.forEach(bc => {
-    const name = (PRODUCT_NAMES[bc] || 'Unknown').padEnd(20);
-    text += `${bc}  ${name}  ${tally[bc].qty}\n`;
+    text += `${bc}  ${(PRODUCT_NAMES[bc]||'Unknown').padEnd(20)}  ${tally[bc].qty}\n`;
   });
   const total = barcodes.reduce((s,b) => s + tally[b].qty, 0);
-  text += `${'─'.repeat(38)}\nSKUs: ${barcodes.length}   TOTAL UNITS: ${total}\n`;
+  text += `${'─'.repeat(40)}\nSKUs: ${barcodes.length}   TOTAL UNITS: ${total}\n`;
   document.getElementById('export-text').value = text;
   document.getElementById('export-modal').classList.add('open');
 }
- 
 function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
 function copyExport() {
   const ta = document.getElementById('export-text');
   navigator.clipboard.writeText(ta.value).then(() => toast('Copied ✓')).catch(() => { ta.select(); document.execCommand('copy'); toast('Copied ✓'); });
   closeExport();
 }
- 
+
 // ─────────────────────────────────────────
 //  HELPERS
 // ─────────────────────────────────────────
-function getTodaySession() {
-  const d = new Date();
-  return d.toLocaleDateString('en-SG', { timeZone: 'Asia/Singapore' }).replace(/\//g, '-');
+function callScript(payload) {
+  return fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ ...payload, secret: SECRET_KEY }),
+    redirect: 'follow'
+  });
 }
- 
+
+function setStatus(msg, active) {
+  document.getElementById('s-text').textContent = msg;
+  document.getElementById('s-dot').className = 's-dot' + (active ? '' : ' off');
+}
+
 function toast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'show' + (type === true ? ' err' : type === 'warn' ? ' warn' : '');
+  t.className   = 'show' + (type === true ? ' err' : type === 'warn' ? ' warn' : '');
   clearTimeout(t._t);
-  t._t = setTimeout(() => t.className = '', 2800);
+  t._t = setTimeout(() => t.className = '', 3000);
 }
 </script>
 </body>
