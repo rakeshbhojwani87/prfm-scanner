@@ -902,8 +902,21 @@ function copyExport() {
 // ─────────────────────────────────────────
 //  HELPERS
 // ─────────────────────────────────────────
-function callScript(payload) {
-  // Append secret as URL param — fallback for iOS Safari body parsing issues
+async function callScript(payload) {
+  // For read-only actions use GET with URL params — avoids Safari redirect body-drop bug
+  const readActions = ['getBatchStatus'];
+  
+  if (readActions.includes(payload.action)) {
+    // GET request — params in URL, no body, no redirect issue
+    const params = new URLSearchParams({
+      secret: SECRET_KEY,
+      action: payload.action
+    });
+    const url = SCRIPT_URL + '?' + params.toString();
+    return fetch(url, { method: 'GET', redirect: 'follow' });
+  }
+
+  // Write actions — POST with secret in both URL and body
   const url = SCRIPT_URL + '?secret=' + encodeURIComponent(SECRET_KEY);
   return fetch(url, {
     method: 'POST',
