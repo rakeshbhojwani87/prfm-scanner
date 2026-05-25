@@ -8,171 +8,186 @@
 <meta name="apple-mobile-web-app-title" content="PRFM Scanner">
 <meta name="theme-color" content="#0f0f0f">
 <title>PRFM · Scanner</title>
+<!-- html5-qrcode for iOS/iPad camera support -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; background: #0f0f0f; color: #f0f0ee; font-family: sans-serif; overscroll-behavior: none; }
-  body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #0f0f0f; color: #f0f0ee; font-family: sans-serif; overscroll-behavior: none; }
+body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
 
-  /* ── SCREENS ── */
-  .screen { display: none; flex-direction: column; height: 100dvh; overflow-y: auto; }
-  .screen.show { display: flex; }
+/* ── SCREENS ── */
+.screen { display: none; flex-direction: column; height: 100dvh; overflow-y: auto; }
+.screen.show { display: flex; }
 
-  /* ── SETUP ── */
-  #setup-screen { align-items: center; justify-content: center; padding: 32px 24px; }
-  .setup-logo  { font-family: monospace; font-size: 12px; letter-spacing: 0.3em; color: #00C9B1; margin-bottom: 8px; }
-  .setup-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-  .setup-sub   { font-size: 13px; color: #aaa; margin-bottom: 28px; text-align: center; line-height: 1.5; }
-  .field       { width: 100%; margin-bottom: 14px; }
-  .field label { display: block; font-family: monospace; font-size: 10px; letter-spacing: 0.15em; color: #aaa; text-transform: uppercase; margin-bottom: 6px; }
-  .field input { width: 100%; background: #1e1e1e; border: 1px solid #444; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 13px; padding: 13px 14px; outline: none; }
-  .field input:focus { border-color: #00C9B1; }
-  .field input::placeholder { color: #555; }
-  .btn-teal  { width: 100%; background: #00C9B1; color: #000; border: none; border-radius: 12px; padding: 17px; font-family: monospace; font-size: 14px; font-weight: 700; letter-spacing: 0.12em; cursor: pointer; margin-top: 6px; }
-  .setup-note { font-size: 11px; color: #666; text-align: center; margin-top: 14px; line-height: 1.6; }
+/* ── SETUP ── */
+#setup-screen { align-items: center; justify-content: center; padding: 32px 24px; }
+.setup-logo  { font-family: monospace; font-size: 12px; letter-spacing: 0.3em; color: #00C9B1; margin-bottom: 8px; }
+.setup-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.setup-sub   { font-size: 13px; color: #aaa; margin-bottom: 28px; text-align: center; line-height: 1.5; }
+.field       { width: 100%; margin-bottom: 14px; }
+.field label { display: block; font-family: monospace; font-size: 10px; letter-spacing: 0.15em; color: #aaa; text-transform: uppercase; margin-bottom: 6px; }
+.field input { width: 100%; background: #1e1e1e; border: 1px solid #444; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 13px; padding: 13px 14px; outline: none; }
+.field input:focus { border-color: #00C9B1; }
+.field input::placeholder { color: #555; }
+.btn-teal  { width: 100%; background: #00C9B1; color: #000; border: none; border-radius: 12px; padding: 17px; font-family: monospace; font-size: 14px; font-weight: 700; letter-spacing: 0.12em; cursor: pointer; margin-top: 6px; }
+.setup-note { font-size: 11px; color: #666; text-align: center; margin-top: 14px; line-height: 1.6; }
 
-  /* ── BATCH SCREEN ── */
-  #batch-screen { align-items: center; justify-content: center; padding: 32px 24px; }
-  .batch-logo  { font-family: monospace; font-size: 12px; letter-spacing: 0.3em; color: #00C9B1; margin-bottom: 8px; }
-  .batch-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-  .batch-sub   { font-size: 13px; color: #aaa; margin-bottom: 28px; text-align: center; line-height: 1.5; }
-  .btn-outline { width: 100%; background: none; border: 1px solid #444; border-radius: 12px; padding: 15px; font-family: monospace; font-size: 12px; color: #aaa; cursor: pointer; margin-top: 8px; letter-spacing: 0.1em; }
+/* ── BATCH SCREEN ── */
+#batch-screen { align-items: center; justify-content: center; padding: 32px 24px; }
+.btn-outline { width: 100%; background: none; border: 1px solid #444; border-radius: 12px; padding: 15px; font-family: monospace; font-size: 12px; color: #aaa; cursor: pointer; margin-top: 8px; letter-spacing: 0.1em; }
 
-  /* ── MAIN APP ── */
-  #app-screen { overflow: hidden; }
+/* ── MAIN APP ── */
+#app-screen { overflow: hidden; }
 
-  /* TOP BAR */
-  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #333; flex-shrink: 0; }
-  .topbar-left { display: flex; flex-direction: column; gap: 2px; }
-  .brand { font-family: monospace; font-size: 11px; letter-spacing: 0.2em; color: #00C9B1; }
-  .batch-tag { font-family: monospace; font-size: 10px; color: #aaa; }
-  .batch-tag .open-dot   { color: #00C9B1; }
-  .batch-tag .closed-dot { color: #E63946; }
-  .topbar-right { display: flex; gap: 8px; }
-  .tb-btn { background: none; border: 1px solid #444; border-radius: 6px; color: #aaa; font-family: monospace; font-size: 10px; padding: 5px 9px; cursor: pointer; letter-spacing: 0.08em; }
-  .tb-btn.danger { border-color: #E63946; color: #E63946; }
+/* TOP BAR */
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #333; flex-shrink: 0; }
+.topbar-left { display: flex; flex-direction: column; gap: 2px; }
+.brand { font-family: monospace; font-size: 11px; letter-spacing: 0.2em; color: #00C9B1; }
+.batch-tag { font-family: monospace; font-size: 10px; color: #aaa; }
+.open-dot   { color: #00C9B1; }
+.closed-dot { color: #E63946; }
+.topbar-right { display: flex; gap: 6px; }
+.tb-btn { background: none; border: 1px solid #444; border-radius: 6px; color: #ccc; font-family: monospace; font-size: 10px; padding: 5px 8px; cursor: pointer; }
+.tb-btn.danger { border-color: #E63946; color: #E63946; }
 
-  /* STATUS */
-  #status-bar { background: #1a1a1a; border-bottom: 1px solid #333; padding: 8px 16px; font-family: monospace; font-size: 11px; color: #00C9B1; flex-shrink: 0; min-height: 33px; display: flex; align-items: center; gap: 8px; }
-  .s-dot { width: 6px; height: 6px; border-radius: 50%; background: #00C9B1; flex-shrink: 0; animation: blink 2s infinite; }
-  .s-dot.off { background: #555; animation: none; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+/* STATUS */
+#status-bar { background: #1a1a1a; border-bottom: 1px solid #333; padding: 7px 14px; font-family: monospace; font-size: 11px; color: #00C9B1; flex-shrink: 0; min-height: 32px; display: flex; align-items: center; gap: 8px; }
+.s-dot { width: 6px; height: 6px; border-radius: 50%; background: #00C9B1; flex-shrink: 0; animation: blink 2s infinite; }
+.s-dot.off { background: #555; animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
 
-  /* CLOSED BANNER */
-  #closed-banner { background: #1A0A0B; border-bottom: 2px solid #E63946; padding: 14px 16px; text-align: center; flex-shrink: 0; display: none; }
-  #closed-banner.show { display: block; }
-  .closed-title { font-family: monospace; font-size: 13px; color: #E63946; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 4px; }
-  .closed-sub   { font-size: 12px; color: #aaa; }
+/* ── MODE SWITCHER ── */
+.mode-switcher { display: flex; gap: 6px; padding: 10px 14px 8px; flex-shrink: 0; border-bottom: 1px solid #333; }
+.mode-btn {
+  flex: 1; background: #1e1e1e; border: 1px solid #383838;
+  border-radius: 10px; color: #888; font-family: monospace;
+  font-size: 11px; letter-spacing: 0.06em; padding: 10px 6px;
+  cursor: pointer; text-align: center; transition: all 0.15s;
+}
+.mode-btn.active { background: rgba(0,201,177,0.1); border-color: #00C9B1; color: #00C9B1; }
+.mode-btn:active { opacity: 0.7; }
 
-  /* CAMERA */
-  #cam-wrap { position: relative; width: 100%; height: 200px; background: #000; flex-shrink: 0; overflow: hidden; }
-  #video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .mask-t { position:absolute; top:0; left:0; right:0; height:calc(50% - 45px); background:rgba(0,0,0,0.65); pointer-events:none; }
-  .mask-b { position:absolute; bottom:0; left:0; right:0; height:calc(50% - 45px); background:rgba(0,0,0,0.65); pointer-events:none; }
-  .mask-l { position:absolute; top:calc(50% - 45px); bottom:calc(50% - 45px); left:0; width:calc(50% - 130px); background:rgba(0,0,0,0.65); pointer-events:none; }
-  .mask-r { position:absolute; top:calc(50% - 45px); bottom:calc(50% - 45px); right:0; width:calc(50% - 130px); background:rgba(0,0,0,0.65); pointer-events:none; }
-  .frame-box { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; }
-  .frame-inner { width:260px; height:90px; position:relative; }
-  .frame-inner::before,.frame-inner::after,.frame-inner .c1,.frame-inner .c2 { content:''; position:absolute; width:18px; height:18px; border-color:#00C9B1; border-style:solid; }
-  .frame-inner::before { top:0; left:0; border-width:2.5px 0 0 2.5px; }
-  .frame-inner::after  { top:0; right:0; border-width:2.5px 2.5px 0 0; }
-  .frame-inner .c1     { bottom:0; right:0; border-width:0 2.5px 2.5px 0; }
-  .frame-inner .c2     { bottom:0; left:0; border-width:0 0 2.5px 2.5px; }
-  .scan-line { position:absolute; left:4px; right:4px; height:1.5px; background:linear-gradient(90deg,transparent,#00C9B1,transparent); animation:sweep 1.8s ease-in-out infinite; }
-  @keyframes sweep { 0%{top:5%;opacity:0} 15%{opacity:1} 85%{opacity:1} 100%{top:95%;opacity:0} }
-  #flash { position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; z-index:5; }
-  #cam-idle { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#080808; z-index:4; }
-  .start-cam-btn { background:#00C9B1; color:#000; border:none; border-radius:50px; padding:12px 28px; font-family:monospace; font-size:12px; font-weight:700; letter-spacing:0.12em; cursor:pointer; }
+/* CLOSED BANNER */
+#closed-banner { background: #1A0A0B; border-bottom: 2px solid #E63946; padding: 12px 16px; text-align: center; flex-shrink: 0; display: none; }
+#closed-banner.show { display: block; }
+.closed-title { font-family: monospace; font-size: 12px; color: #E63946; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 4px; }
+.closed-sub { font-size: 12px; color: #aaa; margin-bottom: 10px; }
+.new-batch-btn { background: #00C9B1; color: #000; border: none; border-radius: 8px; padding: 10px 24px; font-family: monospace; font-size: 12px; font-weight: 700; cursor: pointer; }
 
-  /* mobile section */
-  #mobile-section { display: none; flex-direction: column; flex-shrink: 0; }
-  #mobile-section.show { display: flex; }
-  #mobile-scan-btn { margin:10px 16px 6px; padding:16px; background:#00C9B1; color:#000; border:none; border-radius:12px; font-family:monospace; font-size:14px; font-weight:700; letter-spacing:0.12em; cursor:pointer; }
-  #mobile-scan-btn:disabled { background:#222; color:#666; border:1px solid #333; }
+/* ── CAMERA MODE ── */
+#camera-mode { flex-shrink: 0; display: none; flex-direction: column; }
+#camera-mode.show { display: flex; }
 
-  /* desktop section */
-  #desktop-section { display:none; flex-direction:column; flex-shrink:0; padding:12px 16px 10px; border-bottom:1px solid #333; gap:10px; }
-  #desktop-section.show { display:flex; }
-  #gun-input { width:100%; background:#1e1e1e; border:2px solid #00C9B1; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:16px; padding:13px 16px; outline:none; }
-  #gun-input::placeholder { color:#555; font-size:13px; }
-  #gun-input:disabled { border-color:#333; color:#555; background:#161616; }
-  .toggle-row { display:flex; align-items:center; justify-content:space-between; }
-  .toggle-lbl { font-family:monospace; font-size:11px; color:#ccc; letter-spacing:0.08em; }
-  .toggle-switch { position:relative; width:48px; height:26px; cursor:pointer; flex-shrink:0; }
-  .toggle-switch input { opacity:0; width:0; height:0; }
-  .toggle-track { position:absolute; inset:0; background:#2a2a2a; border-radius:26px; transition:background 0.2s; }
-  .toggle-track::before { content:''; position:absolute; height:20px; width:20px; left:3px; bottom:3px; background:#666; border-radius:50%; transition:transform 0.2s,background 0.2s; }
-  .toggle-switch input:checked + .toggle-track { background:rgba(0,201,177,0.2); border:1px solid #00C9B1; }
-  .toggle-switch input:checked + .toggle-track::before { transform:translateX(22px); background:#00C9B1; }
-  .auto-badge { font-family:monospace; font-size:10px; padding:2px 8px; border-radius:4px; margin-left:8px; }
-  .auto-badge.on  { background:rgba(0,201,177,0.1); color:#00C9B1; border:1px solid rgba(0,201,177,0.3); }
-  .auto-badge.off { background:rgba(255,255,255,0.04); color:#777; border:1px solid #333; }
+/* html5-qrcode container */
+#qr-reader { width: 100%; background: #000; }
+/* Override html5-qrcode styles */
+#qr-reader video { width: 100% !important; max-height: 200px; object-fit: cover; }
+#qr-reader__scan_region { background: #000 !important; }
+#qr-reader__dashboard { background: #1a1a1a !important; padding: 8px 12px !important; border-top: 1px solid #333 !important; }
+#qr-reader__dashboard_section_csr button,
+#html5-qrcode-button-camera-start,
+#html5-qrcode-button-camera-stop { 
+  background: #00C9B1 !important; color: #000 !important; border: none !important;
+  border-radius: 8px !important; font-family: monospace !important; font-size: 11px !important;
+  font-weight: 700 !important; padding: 8px 16px !important; cursor: pointer !important;
+  letter-spacing: 0.08em !important;
+}
+#html5-qrcode-button-camera-stop { background: #1e1e1e !important; color: #aaa !important; border: 1px solid #444 !important; }
+#qr-reader__status_span { color: #aaa !important; font-family: monospace !important; font-size: 10px !important; }
+#qr-reader__camera_selection { background: #1e1e1e !important; color: #f0f0ee !important; border: 1px solid #444 !important; border-radius: 6px !important; font-family: monospace !important; font-size: 11px !important; padding: 4px 8px !important; }
+#qr-reader img, #qr-reader__filescan_input { display: none !important; }
+#qr-reader__dashboard_section_fsr { display: none !important; }
 
-  /* CONFIRM BAR */
-  #confirm-bar { background:#071a18; border-bottom:2px solid #00C9B1; padding:14px 16px; flex-shrink:0; display:none; }
-  #confirm-bar.show { display:block; animation:drop 0.2s ease; }
-  @keyframes drop { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-  .c-label { font-family:monospace; font-size:9px; letter-spacing:0.2em; color:#00C9B1; margin-bottom:5px; text-transform:uppercase; }
-  .c-code  { font-family:monospace; font-size:22px; font-weight:700; color:#f0f0ee; margin-bottom:12px; word-break:break-all; }
-  .c-btns  { display:flex; gap:10px; }
-  .btn-wrong { flex:1; background:none; border:1.5px solid #E63946; border-radius:10px; color:#E63946; font-family:monospace; font-size:13px; font-weight:700; padding:13px; cursor:pointer; }
-  .btn-add   { flex:2; background:#00C9B1; border:none; border-radius:10px; color:#000; font-family:monospace; font-size:14px; font-weight:700; padding:13px; cursor:pointer; }
+.cam-status { padding: 6px 14px; font-family: monospace; font-size: 11px; color: #888; background: #1a1a1a; text-align: center; }
 
-  /* STATS */
-  .stats-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:10px 14px; flex-shrink:0; }
-  .stat-card { background:#1e1e1e; border:1px solid #383838; border-radius:10px; padding:10px 8px; text-align:center; }
-  .stat-val  { font-family:monospace; font-size:22px; font-weight:700; color:#00C9B1; line-height:1; }
-  .stat-lbl  { font-family:monospace; font-size:8px; letter-spacing:0.14em; color:#888; text-transform:uppercase; margin-top:4px; }
+/* ── GUN MODE ── */
+#gun-mode { flex-shrink: 0; display: none; flex-direction: column; padding: 12px 14px 10px; border-bottom: 1px solid #333; gap: 10px; }
+#gun-mode.show { display: flex; }
+#gun-input { width: 100%; background: #1e1e1e; border: 2px solid #00C9B1; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 16px; padding: 13px 16px; outline: none; }
+#gun-input::placeholder { color: #555; font-size: 13px; }
+#gun-input:disabled { border-color: #333; color: #555; background: #161616; }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; }
+.toggle-lbl { font-family: monospace; font-size: 11px; color: #ccc; }
+.toggle-switch { position: relative; width: 48px; height: 26px; cursor: pointer; flex-shrink: 0; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-track { position: absolute; inset: 0; background: #2a2a2a; border-radius: 26px; transition: background 0.2s; }
+.toggle-track::before { content: ''; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #666; border-radius: 50%; transition: transform 0.2s, background 0.2s; }
+.toggle-switch input:checked + .toggle-track { background: rgba(0,201,177,0.2); border: 1px solid #00C9B1; }
+.toggle-switch input:checked + .toggle-track::before { transform: translateX(22px); background: #00C9B1; }
+.auto-badge { font-family: monospace; font-size: 10px; padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+.auto-badge.on  { background: rgba(0,201,177,0.1); color: #00C9B1; border: 1px solid rgba(0,201,177,0.3); }
+.auto-badge.off { background: rgba(255,255,255,0.04); color: #777; border: 1px solid #333; }
 
-  /* TALLY */
-  .tally-hdr { display:flex; align-items:center; justify-content:space-between; padding:6px 16px 4px; flex-shrink:0; }
-  .tally-ttl { font-family:monospace; font-size:9px; letter-spacing:0.2em; color:#888; text-transform:uppercase; }
-  .export-btn { font-family:monospace; font-size:9px; color:#00C9B1; background:none; border:1px solid rgba(0,201,177,0.35); border-radius:5px; padding:4px 8px; cursor:pointer; }
+/* ── MANUAL MODE ── */
+#manual-mode { flex-shrink: 0; display: none; flex-direction: column; padding: 12px 14px 10px; border-bottom: 1px solid #333; gap: 8px; }
+#manual-mode.show { display: flex; }
+.manual-big { display: flex; gap: 8px; }
+#manual-big-input { flex: 1; background: #1e1e1e; border: 2px solid #444; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 15px; padding: 14px 16px; outline: none; -webkit-appearance: none; }
+#manual-big-input:focus { border-color: #00C9B1; }
+#manual-big-input::placeholder { color: #555; font-size: 13px; }
+.manual-add-btn { background: #00C9B1; color: #000; border: none; border-radius: 10px; padding: 14px 20px; font-family: monospace; font-size: 13px; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+.manual-hint { font-family: monospace; font-size: 10px; color: #666; text-align: center; }
 
-  #tally-list { flex:1; overflow-y:auto; padding:4px 14px 10px; -webkit-overflow-scrolling:touch; }
-  #tally-list::-webkit-scrollbar { display:none; }
-  .empty { text-align:center; padding:28px 0; color:#666; font-size:13px; line-height:1.8; }
-  .empty span { font-size:24px; display:block; margin-bottom:8px; }
+/* CONFIRM BAR */
+#confirm-bar { background: #071a18; border-bottom: 2px solid #00C9B1; padding: 14px 16px; flex-shrink: 0; display: none; }
+#confirm-bar.show { display: block; animation: drop 0.2s ease; }
+@keyframes drop { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
+.c-label { font-family: monospace; font-size: 9px; letter-spacing: 0.2em; color: #00C9B1; margin-bottom: 5px; text-transform: uppercase; }
+.c-code  { font-family: monospace; font-size: 22px; font-weight: 700; color: #f0f0ee; margin-bottom: 6px; word-break: break-all; }
+.c-name  { font-size: 13px; color: #aaa; margin-bottom: 12px; }
+.c-btns  { display: flex; gap: 10px; }
+.btn-wrong { flex: 1; background: none; border: 1.5px solid #E63946; border-radius: 10px; color: #E63946; font-family: monospace; font-size: 13px; font-weight: 700; padding: 13px; cursor: pointer; }
+.btn-add   { flex: 2; background: #00C9B1; border: none; border-radius: 10px; color: #000; font-family: monospace; font-size: 14px; font-weight: 700; padding: 13px; cursor: pointer; }
 
-  .item { display:flex; align-items:center; gap:12px; padding:11px 14px; background:#1e1e1e; border:1px solid #383838; border-radius:10px; margin-bottom:6px; animation:item-in 0.2s ease; }
-  @keyframes item-in { from{transform:translateX(8px);opacity:0} to{transform:translateX(0);opacity:1} }
-  .item.bump { animation:bump 0.3s ease; }
-  @keyframes bump { 0%{background:rgba(0,201,177,0.15)} 100%{background:#1e1e1e} }
-  .item-info  { flex:1; min-width:0; }
-  .item-code  { font-family:monospace; font-size:13px; color:#f0f0ee; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .item-name  { font-size:11px; color:#aaa; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .item-scans { font-family:monospace; font-size:10px; color:#888; background:rgba(255,255,255,0.04); border-radius:4px; padding:2px 6px; flex-shrink:0; }
-  .item-qty   { font-family:monospace; font-size:20px; font-weight:700; color:#00C9B1; min-width:32px; text-align:right; flex-shrink:0; }
-  .del-btn    { color:#555; background:none; border:none; font-size:15px; cursor:pointer; padding:2px 4px; flex-shrink:0; }
-  .del-btn:active { color:#E63946; }
-  .sync-dot   { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-  .sync-dot.pending { background:#555; }
-  .sync-dot.sending { background:#FFA500; animation:blink 0.5s infinite; }
-  .sync-dot.ok      { background:#00C9B1; }
-  .sync-dot.fail    { background:#E63946; }
+/* STATS */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 10px 14px; flex-shrink: 0; }
+.stat-card { background: #1e1e1e; border: 1px solid #383838; border-radius: 10px; padding: 10px 8px; text-align: center; }
+.stat-val { font-family: monospace; font-size: 22px; font-weight: 700; color: #00C9B1; line-height: 1; }
+.stat-lbl { font-family: monospace; font-size: 8px; letter-spacing: 0.14em; color: #888; text-transform: uppercase; margin-top: 4px; }
 
-  /* MANUAL */
-  .bottom-bar { display:flex; gap:8px; padding:8px 14px 16px; flex-shrink:0; border-top:1px solid #333; }
-  .manual-input { flex:1; background:#1e1e1e; border:1px solid #444; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:13px; padding:11px 14px; outline:none; -webkit-appearance:none; }
-  .manual-input:focus { border-color:#00C9B1; }
-  .manual-input::placeholder { color:#555; font-size:12px; }
-  .add-btn { background:#1e1e1e; color:#00C9B1; border:1px solid #00C9B1; border-radius:10px; padding:11px 16px; font-family:monospace; font-size:12px; font-weight:700; cursor:pointer; flex-shrink:0; }
+/* TALLY */
+.tally-hdr { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px 4px; flex-shrink: 0; }
+.tally-ttl { font-family: monospace; font-size: 9px; letter-spacing: 0.2em; color: #888; text-transform: uppercase; }
+.export-btn { font-family: monospace; font-size: 9px; color: #00C9B1; background: none; border: 1px solid rgba(0,201,177,0.35); border-radius: 5px; padding: 4px 8px; cursor: pointer; }
 
-  /* EXPORT MODAL */
-  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100; align-items:flex-end; justify-content:center; }
-  .modal-bg.open { display:flex; }
-  .modal-sheet { background:#1a1a1a; border:1px solid #444; border-radius:20px 20px 0 0; padding:28px 24px 40px; width:100%; animation:sheet-up 0.3s cubic-bezier(0.4,0,0.2,1); max-width:500px; }
-  @keyframes sheet-up { from{transform:translateY(100%)} to{transform:translateY(0)} }
-  .modal-title { font-family:monospace; font-size:12px; letter-spacing:0.18em; color:#00C9B1; margin-bottom:16px; }
-  .export-ta { width:100%; background:#0f0f0f; border:1px solid #444; border-radius:10px; color:#f0f0ee; font-family:monospace; font-size:12px; padding:14px; height:200px; resize:none; outline:none; line-height:1.7; }
-  .modal-acts { display:flex; gap:10px; margin-top:14px; }
-  .modal-close { background:none; border:1px solid #444; border-radius:10px; color:#aaa; font-family:monospace; font-size:12px; padding:13px 18px; cursor:pointer; }
-  .modal-copy  { flex:1; background:#00C9B1; border:none; border-radius:10px; color:#000; font-family:monospace; font-size:12px; font-weight:700; padding:13px; cursor:pointer; }
+#tally-list { flex: 1; overflow-y: auto; padding: 4px 14px 10px; -webkit-overflow-scrolling: touch; }
+#tally-list::-webkit-scrollbar { display: none; }
+.empty { text-align: center; padding: 28px 0; color: #666; font-size: 13px; line-height: 1.8; }
+.empty span { font-size: 24px; display: block; margin-bottom: 8px; }
 
-  /* TOAST */
-  #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(50px); background:#1e1e1e; border:1px solid #00C9B1; border-radius:8px; padding:10px 18px; font-family:monospace; font-size:11px; color:#00C9B1; z-index:200; transition:transform 0.25s ease; white-space:nowrap; max-width:90vw; text-overflow:ellipsis; overflow:hidden; }
-  #toast.show { transform:translateX(-50%) translateY(0); }
-  #toast.err  { border-color:#E63946; color:#E63946; }
-  #toast.warn { border-color:#FFA500; color:#FFA500; }
+.item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: #1e1e1e; border: 1px solid #383838; border-radius: 10px; margin-bottom: 6px; animation: item-in 0.2s ease; }
+@keyframes item-in { from{transform:translateX(8px);opacity:0} to{transform:translateX(0);opacity:1} }
+.item.bump { animation: bump 0.3s ease; }
+@keyframes bump { 0%{background:rgba(0,201,177,0.15)} 100%{background:#1e1e1e} }
+.item-info  { flex: 1; min-width: 0; }
+.item-code  { font-family: monospace; font-size: 13px; color: #f0f0ee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.item-name  { font-size: 11px; color: #aaa; margin-top: 2px; }
+.item-scans { font-family: monospace; font-size: 10px; color: #888; background: rgba(255,255,255,0.04); border-radius: 4px; padding: 2px 6px; flex-shrink: 0; }
+.item-qty   { font-family: monospace; font-size: 20px; font-weight: 700; color: #00C9B1; min-width: 32px; text-align: right; flex-shrink: 0; }
+.del-btn    { color: #555; background: none; border: none; font-size: 15px; cursor: pointer; padding: 2px 4px; flex-shrink: 0; }
+.del-btn:active { color: #E63946; }
+.sync-dot   { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.sync-dot.pending { background: #555; }
+.sync-dot.sending { background: #FFA500; animation: blink 0.5s infinite; }
+.sync-dot.ok      { background: #00C9B1; }
+.sync-dot.fail    { background: #E63946; }
+
+/* EXPORT MODAL */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; align-items: flex-end; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal-sheet { background: #1a1a1a; border: 1px solid #444; border-radius: 20px 20px 0 0; padding: 28px 24px 40px; width: 100%; max-width: 500px; animation: sheet-up 0.3s cubic-bezier(0.4,0,0.2,1); }
+@keyframes sheet-up { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-title { font-family: monospace; font-size: 12px; letter-spacing: 0.18em; color: #00C9B1; margin-bottom: 16px; }
+.export-ta { width: 100%; background: #0f0f0f; border: 1px solid #444; border-radius: 10px; color: #f0f0ee; font-family: monospace; font-size: 12px; padding: 14px; height: 200px; resize: none; outline: none; line-height: 1.7; }
+.modal-acts { display: flex; gap: 10px; margin-top: 14px; }
+.modal-close { background: none; border: 1px solid #444; border-radius: 10px; color: #aaa; font-family: monospace; font-size: 12px; padding: 13px 18px; cursor: pointer; }
+.modal-copy  { flex: 1; background: #00C9B1; border: none; border-radius: 10px; color: #000; font-family: monospace; font-size: 12px; font-weight: 700; padding: 13px; cursor: pointer; }
+
+/* TOAST */
+#toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(50px); background: #1e1e1e; border: 1px solid #00C9B1; border-radius: 8px; padding: 10px 18px; font-family: monospace; font-size: 11px; color: #00C9B1; z-index: 200; transition: transform 0.25s ease; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.err  { border-color: #E63946; color: #E63946; }
+#toast.warn { border-color: #FFA500; color: #FFA500; }
 </style>
 </head>
 <body>
@@ -197,10 +212,9 @@
 <!-- ══ BATCH SCREEN ══ -->
 <div id="batch-screen" class="screen">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;">
-    <div class="batch-logo">PRFM · SCANNER</div>
-    <div class="batch-title" id="bs-title">New Batch</div>
-    <div class="batch-sub" id="bs-sub">Enter supplier and PO details to begin.</div>
-
+    <div class="setup-logo">PRFM · SCANNER</div>
+    <div class="setup-title" id="bs-title">New Batch</div>
+    <div class="setup-sub" id="bs-sub">Enter supplier and PO details.</div>
     <div class="field" style="width:100%">
       <label>Supplier Short Name</label>
       <input id="b-supplier" type="text" placeholder="HGS" autocomplete="off" autocapitalize="characters"/>
@@ -224,40 +238,42 @@
     </div>
     <div class="topbar-right">
       <button class="tb-btn" onclick="showExport()">EXPORT</button>
-      <button class="tb-btn danger" id="close-batch-btn" onclick="confirmCloseBatch()">CLOSE BATCH</button>
+      <button class="tb-btn danger" id="close-batch-btn" onclick="confirmCloseBatch()">CLOSE</button>
       <button class="tb-btn" onclick="showSetup()">⚙</button>
     </div>
   </div>
 
   <div id="status-bar"><div class="s-dot off" id="s-dot"></div><span id="s-text">Initialising…</span></div>
 
+  <!-- MODE SWITCHER -->
+  <div class="mode-switcher">
+    <button class="mode-btn" id="mode-camera" onclick="setMode('camera')">📷 CAMERA</button>
+    <button class="mode-btn" id="mode-gun"    onclick="setMode('gun')">⌨ GUN</button>
+    <button class="mode-btn" id="mode-manual" onclick="setMode('manual')">✎ MANUAL</button>
+  </div>
+
+  <!-- CLOSED BANNER -->
   <div id="closed-banner">
     <div class="closed-title">🔒 BATCH CLOSED</div>
-    <div class="closed-sub">This batch is locked. Tap NEW BATCH to start scanning again.</div>
-    <button class="btn-teal" style="margin-top:12px;max-width:260px" onclick="goNewBatch()">NEW BATCH →</button>
+    <div class="closed-sub">This batch is locked. Start a new batch to scan.</div>
+    <button class="new-batch-btn" onclick="goNewBatch()">NEW BATCH →</button>
   </div>
 
-  <!-- MOBILE CAMERA -->
-  <div id="mobile-section">
-    <div id="cam-wrap">
-      <div id="cam-idle">
-        <div style="font-size:13px;color:#888">Tap to start camera</div>
-        <button class="start-cam-btn" onclick="startCamera()">START CAMERA</button>
-      </div>
-      <video id="video" playsinline autoplay muted></video>
-      <div class="mask-t"></div><div class="mask-b"></div>
-      <div class="mask-l"></div><div class="mask-r"></div>
-      <div class="frame-box"><div class="frame-inner"><div class="c1"></div><div class="c2"></div><div class="scan-line"></div></div></div>
-      <div id="flash"></div>
-    </div>
-    <button id="mobile-scan-btn" onclick="captureAndDecode()" disabled>START CAMERA FIRST</button>
+  <!-- CAMERA MODE -->
+  <div id="camera-mode">
+    <div id="qr-reader"></div>
+    <div class="cam-status" id="cam-status">Tap Start to activate camera</div>
   </div>
 
-  <!-- DESKTOP GUN -->
-  <div id="desktop-section">
-    <input id="gun-input" type="text" inputmode="numeric" placeholder="⌨ Ready — scan with USB gun or type barcode…" autocomplete="off" autocapitalize="none"/>
+  <!-- GUN MODE -->
+  <div id="gun-mode">
+    <input id="gun-input" type="text" inputmode="numeric"
+      placeholder="⌨ Ready — scan with USB gun…"
+      autocomplete="off" autocapitalize="none"/>
     <div class="toggle-row">
-      <div class="toggle-lbl">Auto-add on scan <span class="auto-badge off" id="auto-badge">CONFIRM MODE</span></div>
+      <div class="toggle-lbl">Auto-add on scan
+        <span class="auto-badge off" id="auto-badge">CONFIRM MODE</span>
+      </div>
       <label class="toggle-switch">
         <input type="checkbox" id="auto-toggle" onchange="toggleAutoAdd()"/>
         <div class="toggle-track"></div>
@@ -265,10 +281,22 @@
     </div>
   </div>
 
+  <!-- MANUAL MODE -->
+  <div id="manual-mode">
+    <div class="manual-big">
+      <input id="manual-big-input" type="text" inputmode="numeric"
+        placeholder="Type or paste barcode…"
+        autocomplete="off" autocapitalize="none"/>
+      <button class="manual-add-btn" onclick="manualAdd()">ADD</button>
+    </div>
+    <div class="manual-hint">Type full barcode starting with 8881400 and tap ADD</div>
+  </div>
+
   <!-- CONFIRM BAR -->
   <div id="confirm-bar">
     <div class="c-label">▦ Confirm barcode</div>
     <div class="c-code" id="c-code">—</div>
+    <div class="c-name" id="c-name"></div>
     <div class="c-btns">
       <button class="btn-wrong" onclick="rejectScan()">✕ WRONG</button>
       <button class="btn-add"   onclick="confirmScan()">✓ ADD</button>
@@ -288,11 +316,6 @@
 
   <div id="tally-list"><div class="empty"><span>▦</span>No barcodes confirmed yet.</div></div>
 
-  <div class="bottom-bar">
-    <input class="manual-input" id="manual-input" type="text" inputmode="numeric" placeholder="Type barcode manually…" autocomplete="off" autocapitalize="none"/>
-    <button class="add-btn" onclick="manualAdd()">ADD</button>
-  </div>
-
 </div>
 
 <!-- EXPORT MODAL -->
@@ -309,7 +332,6 @@
 
 <div id="toast"></div>
 
-<!-- ZXing for iOS/Safari fallback -->
 <script>
 // ─────────────────────────────────────────
 //  PRODUCT NAMES
@@ -332,39 +354,36 @@ const PRODUCT_NAMES = {
 // ─────────────────────────────────────────
 //  STATE
 // ─────────────────────────────────────────
-let SCRIPT_URL  = '';
-let SECRET_KEY  = '';
-let currentBatch = null;   // { batchId, supplier, po, status }
-let isMobile    = false;
-let autoAdd     = false;
-let audioCtx    = null;
-let detector    = null;
-let cameraStarted = false;
-let scanBusy    = false;
-let pendingCode = null;
-const tally     = {};
+let SCRIPT_URL   = '';
+let SECRET_KEY   = '';
+let currentBatch = null;
+let currentMode  = 'camera'; // camera | gun | manual
+let autoAdd      = false;
+let audioCtx     = null;
+let pendingCode  = null;
+let qrScanner    = null;
+let scannerRunning = false;
+let waitingConfirm = false;
+const tally      = {};
 let totalConfirmed = 0;
-let zxingReader = null;
 
 // ─────────────────────────────────────────
 //  INIT
 // ─────────────────────────────────────────
 window.addEventListener('load', async () => {
-  SCRIPT_URL = localStorage.getItem('prfm_url') || '';
-  SECRET_KEY = localStorage.getItem('prfm_key') || '';
+  SCRIPT_URL  = localStorage.getItem('prfm_url') || '';
+  SECRET_KEY  = localStorage.getItem('prfm_key') || '';
+  currentMode = localStorage.getItem('prfm_mode') || 'camera';
 
   if (!SCRIPT_URL || !SECRET_KEY) {
     showScreen('setup-screen'); return;
   }
 
-  // Check batch status from sheet
-  setStatus('Checking batch status…', true);
   showScreen('app-screen');
-  detectMode();
+  applyMode(currentMode, false); // apply without starting camera
   await checkBatchStatus();
 });
 
-// Re-check when app comes back to foreground
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden && currentBatch) checkBatchStatus();
 });
@@ -372,16 +391,6 @@ document.addEventListener('visibilitychange', () => {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('show'));
   document.getElementById(id).classList.add('show');
-}
-
-function detectMode() {
-  isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
-  if (isMobile) {
-    document.getElementById('mobile-section').classList.add('show');
-  } else {
-    document.getElementById('desktop-section').classList.add('show');
-    setTimeout(() => document.getElementById('gun-input').focus(), 200);
-  }
 }
 
 // ─────────────────────────────────────────
@@ -396,33 +405,76 @@ function saveSetup() {
   localStorage.setItem('prfm_key', key);
   SCRIPT_URL = url; SECRET_KEY = key;
   showScreen('app-screen');
-  detectMode();
+  applyMode(currentMode, false);
   checkBatchStatus();
 }
 
 function showSetup() {
+  stopCamera();
   document.getElementById('s-url').value = SCRIPT_URL;
   document.getElementById('s-key').value = SECRET_KEY;
   showScreen('setup-screen');
 }
 
 // ─────────────────────────────────────────
-//  BATCH STATUS CHECK — called on every load
+//  MODE SWITCHER
+// ─────────────────────────────────────────
+function setMode(mode) {
+  if (mode === currentMode) return;
+  stopCamera();
+  applyMode(mode, true);
+}
+
+function applyMode(mode, startCam) {
+  currentMode = mode;
+  localStorage.setItem('prfm_mode', mode);
+
+  // Update buttons
+  ['camera','gun','manual'].forEach(m => {
+    document.getElementById('mode-' + m).classList.toggle('active', m === mode);
+  });
+
+  // Show/hide sections
+  document.getElementById('camera-mode').classList.toggle('show', mode === 'camera');
+  document.getElementById('gun-mode').classList.toggle('show', mode === 'gun');
+  document.getElementById('manual-mode').classList.toggle('show', mode === 'manual');
+
+  // Start camera if switching to camera mode and batch is open
+  if (mode === 'camera' && startCam && currentBatch && currentBatch.status === 'OPEN') {
+    setTimeout(startCamera, 300);
+  }
+
+  // Focus gun input
+  if (mode === 'gun') {
+    setTimeout(() => document.getElementById('gun-input').focus(), 200);
+  }
+
+  // Focus manual input
+  if (mode === 'manual') {
+    setTimeout(() => document.getElementById('manual-big-input').focus(), 200);
+  }
+}
+
+// ─────────────────────────────────────────
+//  BATCH STATUS
 // ─────────────────────────────────────────
 async function checkBatchStatus() {
   setStatus('Checking batch…', true);
   try {
-    const res  = await callScript({ action: 'getBatchStatus' });
+    const params = new URLSearchParams({ secret: SECRET_KEY, action: 'getBatchStatus' });
+    const res  = await fetch(SCRIPT_URL + '?' + params.toString(), { method: 'GET', redirect: 'follow' });
     const data = await res.json();
 
     if (!data.ok) { setStatus('Error: ' + data.error, false); return; }
 
     if (data.status === 'NONE') {
-      // No batch exists — go to batch screen
       currentBatch = null;
+      stopCamera();
+      document.getElementById('b-supplier').value = 'HGS';
+      document.getElementById('b-po').value = '';
       showScreen('batch-screen');
       document.getElementById('bs-title').textContent = 'Start First Batch';
-      document.getElementById('bs-sub').textContent   = 'No batch found. Create one to begin scanning.';
+      document.getElementById('bs-sub').textContent   = 'No batch found. Create one to begin.';
       return;
     }
 
@@ -431,7 +483,7 @@ async function checkBatchStatus() {
     updateBatchUI();
 
   } catch(e) {
-    setStatus('Could not reach sheet: ' + e.message, false);
+    setStatus('Sheet error: ' + e.message, false);
   }
 }
 
@@ -443,24 +495,22 @@ function updateBatchUI() {
     tag.innerHTML = `<span class="open-dot">●</span> ${currentBatch.batchId} · OPEN`;
     document.getElementById('closed-banner').classList.remove('show');
     document.getElementById('close-batch-btn').style.display = '';
-    enableScanning(true);
-    setStatus('Ready to scan · ' + currentBatch.batchId, false);
+    setStatus('Ready · ' + currentBatch.batchId, false);
+    // Start camera if in camera mode
+    if (currentMode === 'camera' && !scannerRunning) {
+      setTimeout(startCamera, 400);
+    }
+    if (currentMode === 'gun') {
+      setTimeout(() => { const g = document.getElementById('gun-input'); g.disabled = false; g.focus(); }, 200);
+    }
   } else {
     tag.innerHTML = `<span class="closed-dot">🔒</span> ${currentBatch.batchId} · CLOSED`;
     document.getElementById('closed-banner').classList.add('show');
     document.getElementById('close-batch-btn').style.display = 'none';
-    enableScanning(false);
-    setStatus('Batch is closed — start a new batch to scan', false);
+    stopCamera();
+    document.getElementById('gun-input').disabled = true;
+    setStatus('Batch closed — start a new batch to scan', false);
   }
-}
-
-function enableScanning(enabled) {
-  const mBtn = document.getElementById('mobile-scan-btn');
-  const gInput = document.getElementById('gun-input');
-  if (mBtn)   { mBtn.disabled = !enabled || !cameraStarted; if(enabled && cameraStarted) mBtn.textContent = '▦  TAP TO SCAN'; }
-  if (gInput) { gInput.disabled = !enabled; }
-  document.getElementById('manual-input').disabled = !enabled;
-  document.querySelector('.add-btn').disabled = !enabled;
 }
 
 // ─────────────────────────────────────────
@@ -484,13 +534,11 @@ async function createBatch() {
     const res  = await callScript({ action: 'createBatch', supplier, po });
     const data = await res.json();
     if (!data.ok) { toast(data.error, true); return; }
-
     currentBatch = { batchId: data.batchId, supplier, po, status: 'OPEN' };
     showScreen('app-screen');
-    detectMode();
+    applyMode(currentMode, false);
     updateBatchUI();
     toast('Batch created: ' + data.batchId);
-
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
@@ -501,56 +549,111 @@ async function createBatch() {
 // ─────────────────────────────────────────
 async function confirmCloseBatch() {
   if (!currentBatch || currentBatch.status !== 'OPEN') return;
-  if (!confirm('Close batch ' + currentBatch.batchId + '?\n\nScanning will be disabled. You can still sync to Shopify from the Google Sheet.')) return;
-
+  if (!confirm('Close batch ' + currentBatch.batchId + '?\n\nScanning will be disabled on all devices.')) return;
   setStatus('Closing batch…', true);
   try {
     const res  = await callScript({ action: 'closeBatch', batchId: currentBatch.batchId });
     const data = await res.json();
     if (!data.ok) { toast(data.error, true); return; }
-
     currentBatch.status = 'CLOSED';
     updateBatchUI();
     toast('Batch closed · Sync from Google Sheet when ready');
-
   } catch(e) {
     toast('Error: ' + e.message, true);
   }
 }
 
 // ─────────────────────────────────────────
-//  PRFM FILTER
+//  CAMERA — html5-qrcode (works on ALL platforms including iOS)
 // ─────────────────────────────────────────
-function isPRFM(code) {
-  return typeof code === 'string' && code.startsWith('8881400');
+async function startCamera() {
+  if (scannerRunning) return;
+  if (!currentBatch || currentBatch.status !== 'OPEN') return;
+  if (typeof Html5Qrcode === 'undefined') {
+    document.getElementById('cam-status').textContent = 'Camera library loading… please wait';
+    setTimeout(startCamera, 1000);
+    return;
+  }
+
+  try {
+    qrScanner = new Html5Qrcode('qr-reader');
+
+    const config = {
+      fps: 4,
+      qrbox: { width: 250, height: 100 },
+      aspectRatio: 2.0,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+      ],
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+    };
+
+    await qrScanner.start(
+      { facingMode: 'environment' },
+      config,
+      onCameraScan,
+      (err) => {} // silent fail on each frame — normal
+    );
+
+    scannerRunning = true;
+    document.getElementById('cam-status').textContent = 'Camera active — aim at barcode';
+    waitingConfirm = false;
+
+  } catch(e) {
+    document.getElementById('cam-status').textContent = 'Camera error: ' + e + ' — switch to Manual mode';
+  }
+}
+
+function stopCamera() {
+  if (qrScanner && scannerRunning) {
+    try { qrScanner.stop().catch(() => {}); } catch(e) {}
+    scannerRunning = false;
+    qrScanner = null;
+  }
+}
+
+function onCameraScan(code) {
+  // Hard stop — if waiting for confirm, ignore ALL detections
+  if (waitingConfirm) return;
+  if (!isPRFM(code)) return; // silently ignore non-PRFM
+  handleCode(code, 'camera');
 }
 
 // ─────────────────────────────────────────
-//  DESKTOP GUN
+//  GUN INPUT
 // ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-  const gun = document.getElementById('gun-input');
-  gun.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      initAudio();
-      const code = gun.value.trim();
-      gun.value = '';
-      if (code) handleCode(code, 'gun');
-    }
+  document.getElementById('gun-input').addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    initAudio();
+    const code = e.target.value.trim();
+    e.target.value = '';
+    if (code) handleCode(code, 'gun');
   });
-  document.addEventListener('click', e => {
-    if (!isMobile && !e.target.closest('button') && !e.target.closest('input') && !e.target.closest('.modal-bg')) {
-      gun.focus();
-    }
-  });
-  document.getElementById('manual-input').addEventListener('keydown', e => {
+
+  document.getElementById('manual-big-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') manualAdd();
   });
+
+  // Enter = confirm, Escape = reject on keyboard
   document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && pendingCode && document.getElementById('confirm-bar').classList.contains('show')) {
-      e.preventDefault(); confirmScan();
+    if (!pendingCode) return;
+    if (e.key === 'Enter')  { e.preventDefault(); confirmScan(); }
+    if (e.key === 'Escape') { rejectScan(); }
+  });
+
+  // Re-focus gun input on desktop click
+  document.addEventListener('click', e => {
+    if (currentMode === 'gun' &&
+        !e.target.closest('button') &&
+        !e.target.closest('input') &&
+        !e.target.closest('.modal-bg')) {
+      document.getElementById('gun-input').focus();
     }
-    if (e.key === 'Escape' && pendingCode) rejectScan();
   });
 });
 
@@ -563,117 +666,16 @@ function toggleAutoAdd() {
 }
 
 // ─────────────────────────────────────────
-//  CAMERA (MOBILE)
+//  MANUAL ADD
 // ─────────────────────────────────────────
-async function startCamera() {
-  document.getElementById('cam-idle').style.display = 'none';
-  setStatus('Starting camera…', true);
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-    });
-    const video = document.getElementById('video');
-    video.srcObject = stream;
-    await video.play();
-
-    // Try native BarcodeDetector first (Android Chrome)
-    if ('BarcodeDetector' in window) {
-      detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','upc_a','upc_e'] });
-      setStatus('Camera ready — tap to scan', false);
-    } else {
-      // Load ZXing for iOS/Safari
-      setStatus('Loading barcode library…', true);
-      await loadZXing();
-      setStatus('Camera ready — tap to scan', false);
-    }
-
-    cameraStarted = true;
-    const btn = document.getElementById('mobile-scan-btn');
-    if (currentBatch && currentBatch.status === 'OPEN') {
-      btn.disabled = false;
-      btn.textContent = '▦  TAP TO SCAN';
-    }
-
-  } catch(e) {
-    document.getElementById('cam-idle').style.display = 'flex';
-    setStatus('Camera error: ' + e.message, false);
-  }
-}
-
-function loadZXing() {
-  return new Promise((resolve, reject) => {
-    if (window.ZXing) { setupZXing(); resolve(); return; }
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/zxing/0.19.1/zxing.min.js';
-    s.onload = () => { setupZXing(); resolve(); };
-    s.onerror = () => { setStatus('Library failed — use manual input', false); resolve(); };
-    document.head.appendChild(s);
-  });
-}
-
-function setupZXing() {
-  if (!window.ZXing) return;
-  const hints = new Map();
-  hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
-    ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8,
-    ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.UPC_A,
-  ]);
-  zxingReader = new ZXing.BrowserMultiFormatReader(hints);
-}
-
-async function captureAndDecode() {
-  if (scanBusy || !cameraStarted) return;
-  if (!currentBatch || currentBatch.status !== 'OPEN') {
-    toast('Batch is closed', true); return;
-  }
-  scanBusy = true;
+function manualAdd() {
+  const inp  = document.getElementById('manual-big-input');
+  const code = inp.value.trim();
+  if (!code) return;
+  if (!isPRFM(code)) { toast('Must start with 8881400', true); return; }
   initAudio();
-
-  const btn   = document.getElementById('mobile-scan-btn');
-  const video = document.getElementById('video');
-  btn.disabled = true; btn.textContent = 'READING…';
-
-  // Flash
-  const fl = document.getElementById('flash');
-  fl.style.opacity = '0.45';
-  setTimeout(() => fl.style.opacity = '0', 120);
-
-  // Snap to canvas
-  const canvas = document.createElement('canvas');
-  canvas.width  = video.videoWidth  || 1280;
-  canvas.height = video.videoHeight || 720;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-
-  // Crop centre
-  const cw = Math.round(canvas.width * 0.7);
-  const ch = Math.round(canvas.height * 0.55);
-  const cx = Math.round((canvas.width  - cw) / 2);
-  const cy = Math.round((canvas.height - ch) / 2);
-  const crop = document.createElement('canvas');
-  crop.width = cw; crop.height = ch;
-  crop.getContext('2d').drawImage(canvas, cx, cy, cw, ch, 0, 0, cw, ch);
-
-  let found = null;
-  try {
-    if (detector) {
-      const results = await detector.detect(crop);
-      if (results.length) found = results[0].rawValue;
-    } else if (zxingReader) {
-      const result = await zxingReader.decodeFromCanvas(crop);
-      if (result) found = result.getText();
-    }
-  } catch(e) { found = null; }
-
-  if (found) {
-    handleCode(found, 'camera');
-  } else {
-    setStatus('Nothing detected — hold closer and try again', false);
-    if (navigator.vibrate) navigator.vibrate(200);
-  }
-
-  btn.disabled = false; btn.textContent = '▦  TAP TO SCAN';
-  scanBusy = false;
+  handleCode(code, 'manual');
+  inp.value = '';
 }
 
 // ─────────────────────────────────────────
@@ -686,17 +688,19 @@ function handleCode(code, source) {
   if (!isPRFM(code)) {
     setStatus('Not a PRFM barcode: ' + code, false);
     if (navigator.vibrate) navigator.vibrate(200);
-    if (!isMobile) document.getElementById('gun-input').focus();
     return;
   }
+
+  // Gun auto-add — skip confirm
   if (source === 'gun' && autoAdd) {
-    recordBarcode(code);
-    if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 50);
-    return;
+    recordBarcode(code); return;
   }
-  // Confirm mode
+
+  // Show confirm
+  waitingConfirm = true;
   pendingCode = code;
   document.getElementById('c-code').textContent = code;
+  document.getElementById('c-name').textContent = PRODUCT_NAMES[code] || 'Unknown SKU';
   document.getElementById('confirm-bar').classList.add('show');
   setStatus('Confirm or reject ↓', true);
   if (navigator.vibrate) navigator.vibrate([50, 40, 50]);
@@ -708,18 +712,21 @@ function handleCode(code, source) {
 function confirmScan() {
   if (!pendingCode) return;
   initAudio();
-  recordBarcode(pendingCode);
+  const code = pendingCode;
   pendingCode = null;
+  waitingConfirm = false;
   document.getElementById('confirm-bar').classList.remove('show');
-  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 50);
+  recordBarcode(code);
+  if (currentMode === 'gun') setTimeout(() => document.getElementById('gun-input').focus(), 50);
 }
 
 function rejectScan() {
   pendingCode = null;
+  waitingConfirm = false;
   document.getElementById('confirm-bar').classList.remove('show');
   setStatus('Rejected — scan again', false);
   toast('Rejected', true);
-  if (!isMobile) setTimeout(() => document.getElementById('gun-input').focus(), 50);
+  if (currentMode === 'gun') setTimeout(() => document.getElementById('gun-input').focus(), 50);
 }
 
 // ─────────────────────────────────────────
@@ -734,7 +741,7 @@ function recordBarcode(code) {
   if (navigator.vibrate) navigator.vibrate(60);
   updateStats();
   updateTallyUI(code, isNew);
-  setStatus('✓ Added: ' + code + ' — ' + (PRODUCT_NAMES[code] || 'Unknown'), false);
+  setStatus('✓ ' + code + ' — ' + (PRODUCT_NAMES[code] || 'Unknown'), false);
   sendToSheet(code, 1);
 }
 
@@ -742,30 +749,14 @@ async function sendToSheet(barcode, qty) {
   if (!SCRIPT_URL || !SECRET_KEY || !currentBatch) return;
   updateSyncDot(barcode, 'sending');
   try {
-    const payload = JSON.stringify({
-      action:  'addScan',
-      secret:  SECRET_KEY,
-      barcode: barcode,
-      qty:     qty,
-      batchId: currentBatch.batchId
-    });
-    const url = SCRIPT_URL + '?secret=' + encodeURIComponent(SECRET_KEY);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: payload,
-      redirect: 'follow'
-    });
-    const raw = await res.text();
-    let data;
-    try { data = JSON.parse(raw); } catch(e) { throw new Error('Bad response: ' + raw.substring(0,80)); }
-
+    const res  = await callScript({ action: 'addScan', barcode, qty, batchId: currentBatch.batchId });
+    const raw  = await res.text();
+    const data = JSON.parse(raw);
     if (data.ok) {
       updateSyncDot(barcode, 'ok');
       document.getElementById('sheet-live').textContent = '● live';
       document.getElementById('sheet-live').style.color = '#00C9B1';
     } else if (data.error === 'BATCH_CLOSED') {
-      // Batch was closed from another device
       currentBatch.status = 'CLOSED';
       updateBatchUI();
       toast('Batch was closed on another device', true);
@@ -776,8 +767,7 @@ async function sendToSheet(barcode, qty) {
     }
   } catch(e) {
     updateSyncDot(barcode, 'fail');
-    setStatus('Sync failed: ' + e.message, false);
-    toast('Saved locally — sheet sync failed', 'warn');
+    toast('Sheet sync failed — saved locally', 'warn');
   }
 }
 
@@ -791,11 +781,10 @@ function updateSyncDot(code, state) {
 //  TALLY UI
 // ─────────────────────────────────────────
 function updateStats() {
-  const barcodes = Object.keys(tally);
-  const units    = barcodes.reduce((s,b) => s + tally[b].qty, 0);
+  const b = Object.keys(tally);
   document.getElementById('st-confirmed').textContent = totalConfirmed;
-  document.getElementById('st-skus').textContent      = barcodes.length;
-  document.getElementById('st-units').textContent     = units;
+  document.getElementById('st-skus').textContent      = b.length;
+  document.getElementById('st-units').textContent     = b.reduce((s,k) => s + tally[k].qty, 0);
 }
 
 function updateTallyUI(code, isNew) {
@@ -821,7 +810,7 @@ function itemHTML(code) {
       <div class="item-code">${code}</div>
       <div class="item-name">${PRODUCT_NAMES[code] || '—'}</div>
     </div>
-    <div class="sync-dot ${item.synced || 'pending'}"></div>
+    <div class="sync-dot ${item.synced}"></div>
     <div class="item-scans">${item.scans}×</div>
     <div class="item-qty">${item.qty}</div>
     <button class="del-btn" onclick="removeItem('${code}')">✕</button>`;
@@ -837,86 +826,13 @@ function removeItem(code) {
 }
 
 // ─────────────────────────────────────────
-//  MANUAL
-// ─────────────────────────────────────────
-function manualAdd() {
-  const inp  = document.getElementById('manual-input');
-  const code = inp.value.trim();
-  if (!code) return;
-  if (!isPRFM(code)) { toast('Must start with 8881400', true); return; }
-  initAudio(); handleCode(code, 'manual');
-  inp.value = ''; inp.blur();
-}
-
-// ─────────────────────────────────────────
-//  AUDIO
-// ─────────────────────────────────────────
-function initAudio() {
-  if (audioCtx) return;
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const buf = audioCtx.createBuffer(1, 1, 22050);
-    const src = audioCtx.createBufferSource();
-    src.buffer = buf; src.connect(audioCtx.destination); src.start(0);
-  } catch(e) {}
-}
-
-function beep() {
-  if (!audioCtx) return;
-  try {
-    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1480, audioCtx.currentTime);
-    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
-    osc.start(audioCtx.currentTime); osc.stop(audioCtx.currentTime + 0.18);
-  } catch(e) {}
-}
-
-// ─────────────────────────────────────────
-//  EXPORT
-// ─────────────────────────────────────────
-function showExport() {
-  const barcodes = Object.keys(tally);
-  if (!barcodes.length) { toast('Nothing to export yet', true); return; }
-  const now = new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' });
-  const batch = currentBatch ? currentBatch.batchId : '—';
-  let text = `PRFM INVENTORY SCAN\n${now}\nBatch: ${batch}\n${'─'.repeat(40)}\n`;
-  text += `BARCODE          PRODUCT               QTY\n${'─'.repeat(40)}\n`;
-  barcodes.forEach(bc => {
-    text += `${bc}  ${(PRODUCT_NAMES[bc]||'Unknown').padEnd(20)}  ${tally[bc].qty}\n`;
-  });
-  const total = barcodes.reduce((s,b) => s + tally[b].qty, 0);
-  text += `${'─'.repeat(40)}\nSKUs: ${barcodes.length}   TOTAL UNITS: ${total}\n`;
-  document.getElementById('export-text').value = text;
-  document.getElementById('export-modal').classList.add('open');
-}
-function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
-function copyExport() {
-  const ta = document.getElementById('export-text');
-  navigator.clipboard.writeText(ta.value).then(() => toast('Copied ✓')).catch(() => { ta.select(); document.execCommand('copy'); toast('Copied ✓'); });
-  closeExport();
-}
-
-// ─────────────────────────────────────────
 //  HELPERS
 // ─────────────────────────────────────────
-async function callScript(payload) {
-  // For read-only actions use GET with URL params — avoids Safari redirect body-drop bug
-  const readActions = ['getBatchStatus'];
-  
-  if (readActions.includes(payload.action)) {
-    // GET request — params in URL, no body, no redirect issue
-    const params = new URLSearchParams({
-      secret: SECRET_KEY,
-      action: payload.action
-    });
-    const url = SCRIPT_URL + '?' + params.toString();
-    return fetch(url, { method: 'GET', redirect: 'follow' });
-  }
+function isPRFM(code) {
+  return typeof code === 'string' && code.startsWith('8881400');
+}
 
-  // Write actions — POST with secret in both URL and body
+function callScript(payload) {
   const url = SCRIPT_URL + '?secret=' + encodeURIComponent(SECRET_KEY);
   return fetch(url, {
     method: 'POST',
@@ -931,10 +847,54 @@ function setStatus(msg, active) {
   document.getElementById('s-dot').className = 's-dot' + (active ? '' : ' off');
 }
 
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const b = audioCtx.createBuffer(1,1,22050), s = audioCtx.createBufferSource();
+    s.buffer = b; s.connect(audioCtx.destination); s.start(0);
+  } catch(e) {}
+}
+
+function beep() {
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    o.type = 'sine';
+    o.frequency.setValueAtTime(1480, audioCtx.currentTime);
+    g.gain.setValueAtTime(0.5, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.18);
+    o.start(audioCtx.currentTime); o.stop(audioCtx.currentTime + 0.18);
+  } catch(e) {}
+}
+
+function showExport() {
+  const barcodes = Object.keys(tally);
+  if (!barcodes.length) { toast('Nothing to export yet', true); return; }
+  const now   = new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' });
+  const batch = currentBatch ? currentBatch.batchId : '—';
+  let text = `PRFM INVENTORY SCAN\n${now}\nBatch: ${batch}\n${'─'.repeat(40)}\n`;
+  text += `BARCODE          PRODUCT               QTY\n${'─'.repeat(40)}\n`;
+  barcodes.forEach(bc => { text += `${bc}  ${(PRODUCT_NAMES[bc]||'Unknown').padEnd(20)}  ${tally[bc].qty}\n`; });
+  const total = barcodes.reduce((s,b) => s + tally[b].qty, 0);
+  text += `${'─'.repeat(40)}\nSKUs: ${barcodes.length}   TOTAL UNITS: ${total}\n`;
+  document.getElementById('export-text').value = text;
+  document.getElementById('export-modal').classList.add('open');
+}
+
+function closeExport() { document.getElementById('export-modal').classList.remove('open'); }
+
+function copyExport() {
+  const ta = document.getElementById('export-text');
+  navigator.clipboard.writeText(ta.value).then(() => toast('Copied ✓')).catch(() => { ta.select(); document.execCommand('copy'); toast('Copied ✓'); });
+  closeExport();
+}
+
 function toast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className   = 'show' + (type === true ? ' err' : type === 'warn' ? ' warn' : '');
+  t.className = 'show' + (type === true ? ' err' : type === 'warn' ? ' warn' : '');
   clearTimeout(t._t);
   t._t = setTimeout(() => t.className = '', 3000);
 }
