@@ -75,9 +75,7 @@ body { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; 
 .field input::placeholder { color: #444; }
 
 .btn-grad {
-  width: auto;
-  min-width: 220px;
-  border: none; border-radius: 10px; padding: 13px 16px;
+  width: 100%; border: none; border-radius: 10px; padding: 13px 16px;
   font-family: var(--font); font-size: 13px; font-weight: 700;
   letter-spacing: 0.08em; cursor: pointer; margin-top: 8px;
   background: linear-gradient(90deg, var(--coral), var(--purple), var(--magenta));
@@ -904,7 +902,7 @@ async function sendToSheet(barcode, qty, source) {
       qty,
       batchId:  currentBatch.batchId,
       operator: currentOp,
-      device:   source || currentMode
+      device:   getDeviceLabel(source || currentMode)
     });
     const raw  = await res.text();
     const data = JSON.parse(raw);
@@ -984,6 +982,28 @@ function removeItem(code) {
 // ─────────────────────────────────────────
 //  HELPERS
 // ─────────────────────────────────────────
+function getDeviceLabel(mode) {
+  const ua = navigator.userAgent;
+  let device = '';
+
+  // Detect OS
+  if (/iPhone/.test(ua))                          device = 'iOS iPhone';
+  else if (/iPad/.test(ua))                       device = 'iOS iPad';
+  else if (/Android/.test(ua) && /Mobile/.test(ua)) device = 'Android Mobile';
+  else if (/Android/.test(ua))                    device = 'Android Tablet';
+  else if (/Macintosh/.test(ua))                  device = 'Mac';
+  else if (/Windows/.test(ua))                    device = 'Windows';
+  else if (/Linux/.test(ua))                      device = 'Linux';
+  else                                            device = 'Unknown';
+
+  // Append input mode
+  if (mode === 'camera') device += ' · Camera';
+  else if (mode === 'gun') device += ' · USB Gun';
+  else if (mode === 'manual') device += ' · Manual';
+
+  return device;
+}
+
 function isPRFM(code) { return typeof code === 'string' && code.startsWith('8881400'); }
 
 function callScript(payload) {
